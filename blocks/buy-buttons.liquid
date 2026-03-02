@@ -63,46 +63,63 @@
           ref="variantId"
           value="{{ product.selected_or_first_available_variant.id }}"
         >
+        {%- comment -%} Product-level properties (don't change with variant) {%- endcomment -%}
         {%- if product.metafields.custom.is_hazmat.value -%}
           <input
             type="hidden"
-            name="properties[is_hazmat]"
+            name="properties[_is_hazmat]"
             value="true"
           >
         {%- endif -%}
-        {%- if product.selected_or_first_available_variant.metafields.custom.length -%}
-          <input
-            type="hidden"
-            name="properties[length]"
-            value="{{ product.selected_or_first_available_variant.metafields.custom.length.value }} {{ product.selected_or_first_available_variant.metafields.custom.length.unit }}"
-          >
-        {%- endif -%}
-        {%- if product.selected_or_first_available_variant.metafields.custom.width -%}
-          <input
-            type="hidden"
-            name="properties[width]"
-            value="{{ product.selected_or_first_available_variant.metafields.custom.width.value }} {{ product.selected_or_first_available_variant.metafields.custom.width.unit }}"
-          >
-        {%- endif -%}
-        {%- if product.selected_or_first_available_variant.metafields.custom.height -%}
-          <input
-            type="hidden"
-            name="properties[height]"
-            value="{{ product.selected_or_first_available_variant.metafields.custom.height.value }} {{ product.selected_or_first_available_variant.metafields.custom.height.unit }}"
-          >
-        {%- endif -%}
-        <input
-          type="hidden"
-          name="properties[in_stock]"
-          value="{{ product.selected_or_first_available_variant.available }}"
-        >
         {%- if product.metafields.custom.lead_time.value -%}
           <input
             type="hidden"
-            name="properties[lead_time]"
+            name="properties[_lead_time]"
             value="{{ product.metafields.custom.lead_time.value }}"
           >
         {%- endif -%}
+        {%- comment -%} Variant-level properties (updated via JS on variant change) {%- endcomment -%}
+        {%- assign initial_variant = product.selected_or_first_available_variant -%}
+        <input
+          type="hidden"
+          name="properties[_length]"
+          ref="propertyLength"
+          value="{%- if initial_variant.metafields.custom.length -%}{{ initial_variant.metafields.custom.length.value }} {{ initial_variant.metafields.custom.length.unit }}{%- endif -%}"
+          {%- unless initial_variant.metafields.custom.length -%}disabled{%- endunless -%}
+        >
+        <input
+          type="hidden"
+          name="properties[_width]"
+          ref="propertyWidth"
+          value="{%- if initial_variant.metafields.custom.width -%}{{ initial_variant.metafields.custom.width.value }} {{ initial_variant.metafields.custom.width.unit }}{%- endif -%}"
+          {%- unless initial_variant.metafields.custom.width -%}disabled{%- endunless -%}
+        >
+        <input
+          type="hidden"
+          name="properties[_height]"
+          ref="propertyHeight"
+          value="{%- if initial_variant.metafields.custom.height -%}{{ initial_variant.metafields.custom.height.value }} {{ initial_variant.metafields.custom.height.unit }}{%- endif -%}"
+          {%- unless initial_variant.metafields.custom.height -%}disabled{%- endunless -%}
+        >
+        <input
+          type="hidden"
+          name="properties[_in_stock]"
+          ref="propertyInStock"
+          value="{{ initial_variant.available }}"
+        >
+        {%- comment -%} Variant metafield data for JS updates {%- endcomment -%}
+        <script type="application/json" data-variant-properties>
+          {
+            {%- for variant in product.variants -%}
+              "{{ variant.id }}": {
+                "available": {{ variant.available }},
+                "length": {%- if variant.metafields.custom.length -%}"{{ variant.metafields.custom.length.value }} {{ variant.metafields.custom.length.unit }}"{%- else -%}null{%- endif -%},
+                "width": {%- if variant.metafields.custom.width -%}"{{ variant.metafields.custom.width.value }} {{ variant.metafields.custom.width.unit }}"{%- else -%}null{%- endif -%},
+                "height": {%- if variant.metafields.custom.height -%}"{{ variant.metafields.custom.height.value }} {{ variant.metafields.custom.height.unit }}"{%- else -%}null{%- endif -%}
+              }{%- unless forloop.last -%},{%- endunless -%}
+            {%- endfor -%}
+          }
+        </script>
         {%- if block_settings.gift_card_form and product.gift_card? -%}
           {%- render 'gift-card-recipient-form', product: product, form: form, section: section, block: block -%}
         {%- endif -%}
@@ -711,6 +728,52 @@
     font-weight: normal;
   }
 {% endstylesheet %}
+
+<script>
+  (function() {
+    // Update variant properties when variant changes
+    document.addEventListener('variant:update', function(event) {
+      const form = event.target.closest('form[data-type="add-to-cart-form"]');
+      if (!form) return;
+
+      const variantId = event.detail?.resource?.id;
+      if (!variantId) return;
+
+      const dataScript = form.querySelector('script[data-variant-properties]');
+      if (!dataScript) return;
+
+      try {
+        const variantData = JSON.parse(dataScript.textContent);
+        const data = variantData[variantId];
+        if (!data) return;
+
+        // Update each property input
+        const lengthInput = form.querySelector('input[name="properties[length]"]');
+        const widthInput = form.querySelector('input[name="properties[width]"]');
+        const heightInput = form.querySelector('input[name="properties[height]"]');
+        const inStockInput = form.querySelector('input[name="properties[in_stock]"]');
+
+        if (lengthInput) {
+          lengthInput.value = data.length || '';
+          lengthInput.disabled = !data.length;
+        }
+        if (widthInput) {
+          widthInput.value = data.width || '';
+          widthInput.disabled = !data.width;
+        }
+        if (heightInput) {
+          heightInput.value = data.height || '';
+          heightInput.disabled = !data.height;
+        }
+        if (inStockInput) {
+          inStockInput.value = data.available;
+        }
+      } catch (e) {
+        console.error('Error updating variant properties:', e);
+      }
+    });
+  })();
+</script>
 
 {% schema %}
 {

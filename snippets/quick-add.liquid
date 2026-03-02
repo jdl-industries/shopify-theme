@@ -63,46 +63,58 @@
         name="quantity"
         value="{% if variant.quantity_rule.min %}{{ variant.quantity_rule.min }}{% else %}1{% endif %}"
       >
+      {%- comment -%} Product-level properties (don't change with variant) {%- endcomment -%}
       {%- if product.metafields.custom.is_hazmat.value -%}
         <input
           type="hidden"
-          name="properties[is_hazmat]"
+          name="properties[_is_hazmat]"
           value="true"
         >
       {%- endif -%}
-      {%- if product.selected_or_first_available_variant.metafields.custom.length -%}
-        <input
-          type="hidden"
-          name="properties[length]"
-          value="{{ product.selected_or_first_available_variant.metafields.custom.length.value }} {{ product.selected_or_first_available_variant.metafields.custom.length.unit }}"
-        >
-      {%- endif -%}
-      {%- if product.selected_or_first_available_variant.metafields.custom.width -%}
-        <input
-          type="hidden"
-          name="properties[width]"
-          value="{{ product.selected_or_first_available_variant.metafields.custom.width.value }} {{ product.selected_or_first_available_variant.metafields.custom.width.unit }}"
-        >
-      {%- endif -%}
-      {%- if product.selected_or_first_available_variant.metafields.custom.height -%}
-        <input
-          type="hidden"
-          name="properties[height]"
-          value="{{ product.selected_or_first_available_variant.metafields.custom.height.value }} {{ product.selected_or_first_available_variant.metafields.custom.height.unit }}"
-        >
-      {%- endif -%}
-      <input
-        type="hidden"
-        name="properties[in_stock]"
-        value="{{ product.selected_or_first_available_variant.available }}"
-      >
       {%- if product.metafields.custom.lead_time.value -%}
         <input
           type="hidden"
-          name="properties[lead_time]"
+          name="properties[_lead_time]"
           value="{{ product.metafields.custom.lead_time.value }}"
         >
       {%- endif -%}
+      {%- comment -%} Variant-level properties (updated via JS on variant change) {%- endcomment -%}
+      <input
+        type="hidden"
+        name="properties[_length]"
+        value="{%- if variant.metafields.custom.length -%}{{ variant.metafields.custom.length.value }} {{ variant.metafields.custom.length.unit }}{%- endif -%}"
+        {%- unless variant.metafields.custom.length -%}disabled{%- endunless -%}
+      >
+      <input
+        type="hidden"
+        name="properties[_width]"
+        value="{%- if variant.metafields.custom.width -%}{{ variant.metafields.custom.width.value }} {{ variant.metafields.custom.width.unit }}{%- endif -%}"
+        {%- unless variant.metafields.custom.width -%}disabled{%- endunless -%}
+      >
+      <input
+        type="hidden"
+        name="properties[_height]"
+        value="{%- if variant.metafields.custom.height -%}{{ variant.metafields.custom.height.value }} {{ variant.metafields.custom.height.unit }}{%- endif -%}"
+        {%- unless variant.metafields.custom.height -%}disabled{%- endunless -%}
+      >
+      <input
+        type="hidden"
+        name="properties[_in_stock]"
+        value="{{ variant.available }}"
+      >
+      {%- comment -%} Variant metafield data for JS updates {%- endcomment -%}
+      <script type="application/json" data-variant-properties>
+        {
+          {%- for v in product.variants -%}
+            "{{ v.id }}": {
+              "available": {{ v.available }},
+              "length": {%- if v.metafields.custom.length -%}"{{ v.metafields.custom.length.value }} {{ v.metafields.custom.length.unit }}"{%- else -%}null{%- endif -%},
+              "width": {%- if v.metafields.custom.width -%}"{{ v.metafields.custom.width.value }} {{ v.metafields.custom.width.unit }}"{%- else -%}null{%- endif -%},
+              "height": {%- if v.metafields.custom.height -%}"{{ v.metafields.custom.height.value }} {{ v.metafields.custom.height.unit }}"{%- else -%}null{%- endif -%}
+            }{%- unless forloop.last -%},{%- endunless -%}
+          {%- endfor -%}
+        }
+      </script>
       {% comment %}
         Both Add and Choose buttons are rendered in the DOM, but only one is shown based on the data-quick-add-button attribute.
 
@@ -334,3 +346,52 @@
     }
   }
 {% endstylesheet %}
+
+<script>
+  (function() {
+    // Update variant properties when variant changes (for quick-add on product cards)
+    document.addEventListener('variant:update', function(event) {
+      const quickAdd = event.target.closest('quick-add-component');
+      if (!quickAdd) return;
+
+      const form = quickAdd.querySelector('form[data-type="add-to-cart-form"]');
+      if (!form) return;
+
+      const variantId = event.detail?.resource?.id;
+      if (!variantId) return;
+
+      const dataScript = form.querySelector('script[data-variant-properties]');
+      if (!dataScript) return;
+
+      try {
+        const variantData = JSON.parse(dataScript.textContent);
+        const data = variantData[variantId];
+        if (!data) return;
+
+        // Update each property input
+        const lengthInput = form.querySelector('input[name="properties[length]"]');
+        const widthInput = form.querySelector('input[name="properties[width]"]');
+        const heightInput = form.querySelector('input[name="properties[height]"]');
+        const inStockInput = form.querySelector('input[name="properties[in_stock]"]');
+
+        if (lengthInput) {
+          lengthInput.value = data.length || '';
+          lengthInput.disabled = !data.length;
+        }
+        if (widthInput) {
+          widthInput.value = data.width || '';
+          widthInput.disabled = !data.width;
+        }
+        if (heightInput) {
+          heightInput.value = data.height || '';
+          heightInput.disabled = !data.height;
+        }
+        if (inStockInput) {
+          inStockInput.value = data.available;
+        }
+      } catch (e) {
+        console.error('Error updating variant properties:', e);
+      }
+    });
+  })();
+</script>
