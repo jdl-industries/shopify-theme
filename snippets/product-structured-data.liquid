@@ -1,0 +1,151 @@
+{%- doc -%}
+  Enhanced Product JSON-LD Structured Data
+  Outputs comprehensive schema.org Product markup optimized for Google rich results.
+
+  @param {object} product - The product object (required)
+
+  Usage:
+  {% render 'product-structured-data', product: product %}
+{%- enddoc -%}
+
+{%- liquid
+  # Exit early if no product
+  if product == blank
+    break
+  endif
+
+  # Get the selected or first available variant for offer data
+  assign current_variant = product.selected_or_first_available_variant
+  if current_variant == blank
+    assign current_variant = product.variants.first
+  endif
+
+  # Currency with fallback
+  assign currency_code = cart.currency.iso_code | default: shop.currency | default: 'USD'
+
+  # Gather metafield values
+  assign sae_color = product.metafields.custom.sae_color.value
+  assign mfr_part_number = product.metafields.custom.manufacturer_part_number.value
+  assign nsn = product.metafields.custom.nsn.value
+  assign is_hazmat = product.metafields.custom.is_hazmat.value
+  assign certifications = product.metafields.custom.compliance_certifications.value
+
+  assign mil_specs = product.metafields.custom.mil_specs.value
+
+  assign qpl_list = product.metafields.custom.qpl.value
+
+  # Build canonical URL
+  assign canonical_url = product.url | prepend: request.origin
+-%}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": {{ product.title | json }},
+  "url": {{ canonical_url | json }},
+  "description": {{ product.description | strip_html | strip_newlines | truncate: 5000 | json }},
+  {%- if product.images.size > 0 -%}
+  "image": [
+    {%- for image in product.images limit: 5 -%}
+      {{ image | image_url: width: 1200 | json }}{%- unless forloop.last -%},{%- endunless -%}
+    {%- endfor -%}
+  ],
+  {%- endif -%}
+  {%- if product.vendor != blank -%}
+  "brand": {
+    "@type": "Brand",
+    "name": {{ product.vendor | json }}
+  },
+  {%- endif -%}
+  {%- if current_variant.sku != blank -%}
+  "sku": {{ current_variant.sku | json }},
+  {%- endif -%}
+  {%- if current_variant.barcode != blank -%}
+  "gtin": {{ current_variant.barcode | json }},
+  {%- endif -%}
+  {%- if mfr_part_number != blank -%}
+  "mpn": {{ mfr_part_number | json }},
+  {%- endif -%}
+  {%- if nsn != blank -%}
+  "productID": {{ nsn | json }},
+  {%- endif -%}
+  {%- if sae_color != blank -%}
+  "color": {{ sae_color | json }},
+  {%- endif -%}
+  "additionalProperty": [
+    {%- if nsn != blank -%}
+      {
+        "@type":"PropertyValue",
+        "name":"National Stock Number (NSN)",
+        "value":{{ nsn | json }}
+      },
+    {%- endif -%}
+
+    {%- if mil_specs != blank and mil_specs.size > 0 -%}
+      {%- for spec in mil_specs -%}
+        {
+          "@type":"PropertyValue",
+          "name":"Military Specification",
+          "value":{{ spec.long_name.value | json }},
+          "description": {{ spec.description.value | json }}
+        },
+      {%- endfor -%}
+    {%- endif -%}
+
+    {%- if qpl_list != blank and qpl_list.size > 0 -%}
+      {
+        "@type": "PropertyValue",
+        "name": "Certification Status",
+        "value": "QPL Certified",
+        "description": "This product is officially listed on the Qualified Products List (QPL) for aviation and defense applications."
+      },
+    {%- endif -%}
+
+    {%- comment -%} Compliance & OEM Certifications {%- endcomment -%}
+    {%- if certifications != blank -%}
+      {%- for cert in certifications -%}
+        {%- assign cert_trimmed = cert | strip -%}
+        {%- if cert_trimmed != blank -%}
+          {"@type":"PropertyValue","name":"OEM Certification","value":{{ cert_trimmed | json }}},
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+
+    {
+      "@type":"PropertyValue",
+      "name":"Hazardous Material",
+      "value":{% if is_hazmat %}"Yes"{% else %}"No"{% endif %}
+    }
+  ],
+
+  "offers": {
+    {%- if product.variants.size > 1 -%}
+    "@type": "AggregateOffer",
+    "url": {{ canonical_url | json }},
+    "priceCurrency": {{ currency_code | json }},
+    "lowPrice": {{ product.price_min | default: 0 | divided_by: 100.0 }},
+    "highPrice": {{ product.price_max | default: 0 | divided_by: 100.0 }},
+    "offerCount": {{ product.variants.size }},
+    "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}"
+    {%- else -%}
+    "@type": "Offer",
+    "url": {{ canonical_url | json }},
+    "priceCurrency": {{ currency_code | json }},
+    "price": {{ current_variant.price | default: 0 | divided_by: 100.0 }},
+    "availability": "https://schema.org/{% if current_variant.available %}InStock{% else %}OutOfStock{% endif %}",
+    {%- if current_variant.sku != blank -%}
+    "sku": {{ current_variant.sku | json }},
+    {%- endif -%}
+    {%- endif -%}
+    "itemCondition": "https://schema.org/NewCondition",
+    "priceValidUntil": "{{ 'now' | date: '%s' | plus: 2592000 | date: '%Y-%m-%d' }}",
+    {%- if shop.name != blank -%}
+    "seller": {
+      "@type": "Organization",
+      "name": {{ shop.name | json }}
+    }
+    {%- endif -%}
+  }
+}
+</script>

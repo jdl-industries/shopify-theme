@@ -24,7 +24,6 @@
   assign sae_color = product.metafields.custom.sae_color.value
   assign qpl_list = product.metafields.custom.qpl.value
 
-  # Try both singular and plural handles for military specifications
   assign mil_specs = product.metafields.custom.mil_specs.value
 
   assign is_hazmat = product.metafields.custom.is_hazmat.value
@@ -55,15 +54,13 @@
       {{ block.settings.heading | default: 'Technical Specifications' }}
     </h2>
 
-    {%- comment -%} Specifications Table using definition list for SEO {%- endcomment -%}
-    <dl class="product-specifications__list" itemscope itemtype="https://schema.org/Product">
-      <meta itemprop="name" content="{{ product.title | escape }}">
+    <dl class="product-specifications__list">
 
       {%- comment -%} Manufacturer Part Number {%- endcomment -%}
       {%- if mfr_part_number != blank -%}
         <div class="product-specifications__row">
           <dt class="product-specifications__label">Manufacturer Part Number</dt>
-          <dd class="product-specifications__value" itemprop="mpn">{{ mfr_part_number }}</dd>
+          <dd class="product-specifications__value">{{ mfr_part_number }}</dd>
         </div>
       {%- endif -%}
 
@@ -73,7 +70,7 @@
           <dt class="product-specifications__label">
             <abbr title="National Stock Number">NSN</abbr>
           </dt>
-          <dd class="product-specifications__value" itemprop="productID">{{ nsn }}</dd>
+          <dd class="product-specifications__value">{{ nsn }}</dd>
         </div>
       {%- endif -%}
 
@@ -81,7 +78,7 @@
       {%- if sae_color != blank -%}
         <div class="product-specifications__row">
           <dt class="product-specifications__label">SAE Color</dt>
-          <dd class="product-specifications__value" itemprop="color">{{ sae_color }}</dd>
+          <dd class="product-specifications__value">{{ sae_color }}</dd>
         </div>
       {%- endif -%}
 
@@ -94,13 +91,13 @@
             {%- if applications.size > 0 and applications.first != blank -%}
               {%- comment -%} It's an array - iterate directly {%- endcomment -%}
               {%- for app in applications -%}
-                <span class="product-specifications__tag" itemprop="category">{{ app | strip }}</span>
+                <span class="product-specifications__tag">{{ app | strip }}</span>
               {%- endfor -%}
             {%- else -%}
               {%- comment -%} It's a string - split by comma {%- endcomment -%}
               {%- assign app_list = applications | split: ',' -%}
               {%- for app in app_list -%}
-                <span class="product-specifications__tag" itemprop="category">{{ app | strip }}</span>
+                <span class="product-specifications__tag">{{ app | strip }}</span>
               {%- endfor -%}
             {%- endif -%}
           </dd>
@@ -133,28 +130,17 @@
           <dd class="product-specifications__value">
             <ul class="product-specifications__inline-list">
               {%- for spec in mil_specs -%}
-                <li class="product-specifications__list-item" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
-                  <meta itemprop="name" content="Military Specification">
-                  {%- comment -%} Build the spec identifier for structured data {%- endcomment -%}
-                  {%- capture spec_identifier -%}
+                <li class="product-specifications__list-item">
+                  {%- if spec.long_name.value != blank -%}
+                    {{ spec.long_name.value }}
+                  {%- elsif spec.short_name.value != blank -%}
+                    {{ spec.short_name.value }}
+                  {%- else -%}
                     {%- if spec.document_type.value != blank -%}{{ spec.document_type.value }}{%- endif -%}
                     {%- if spec.spec_number.value != blank -%}-{{ spec.spec_number.value }}{%- endif -%}
                     {%- if spec.type.value != blank -%} Type {{ spec.type.value }}{%- endif -%}
                     {%- if spec.class.value != blank -%} Class {{ spec.class.value }}{%- endif -%}
-                    {%- if spec.grade.value != blank -%} Grade {{ spec.grade.value }}{%- endif -%}
-                    {%- if spec.revision.value != blank -%}{{ spec.revision.value }}{%- endif -%}
-                  {%- endcapture -%}
-                  <meta itemprop="value" content="{{ spec_identifier | strip }}">
-                  <span>
-                    {%- comment -%} Display long_name if available, otherwise fall back to short_name or constructed identifier {%- endcomment -%}
-                    {%- if spec.long_name.value != blank -%}
-                      {{ spec.long_name.value }}
-                    {%- elsif spec.short_name.value != blank -%}
-                      {{ spec.short_name.value }}
-                    {%- else -%}
-                      {{ spec_identifier | strip }}
-                    {%- endif -%}
-                  </span>
+                  {%- endif -%}
                 </li>
               {%- endfor -%}
             </ul>
@@ -171,29 +157,20 @@
           <dd class="product-specifications__value">
             <ul class="product-specifications__inline-list product-specifications__inline-list--certified">
               {%- for qpl in qpl_list -%}
-                <li class="product-specifications__list-item product-specifications__list-item--certified" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
-                  <meta itemprop="name" content="QPL Certification">
-                  {%- comment -%} Build the spec identifier for structured data {%- endcomment -%}
-                  {%- capture qpl_identifier -%}
-                    {%- if qpl.document_type.value != blank -%}{{ qpl.document_type.value }}{%- endif -%}
-                    {%- if qpl.spec_number.value != blank -%}-{{ qpl.spec_number.value }}{%- endif -%}
-                    {%- if qpl.type.value != blank -%} Type {{ qpl.type.value }}{%- endif -%}
-                    {%- if qpl.class.value != blank -%} Class {{ qpl.class.value }}{%- endif -%}
-                    {%- if qpl.grade.value != blank -%} Grade {{ qpl.grade.value }}{%- endif -%}
-                    {%- if qpl.revision.value != blank -%}{{ qpl.revision.value }}{%- endif -%}
-                  {%- endcapture -%}
-                  <meta itemprop="value" content="{{ qpl_identifier | strip }}">
+                <li class="product-specifications__list-item product-specifications__list-item--certified">
                   <svg class="product-specifications__check-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
                   </svg>
                   <span>
-                    {%- comment -%} Display long_name if available, otherwise fall back to short_name or constructed identifier {%- endcomment -%}
                     {%- if qpl.long_name.value != blank -%}
                       {{ qpl.long_name.value }}
                     {%- elsif qpl.short_name.value != blank -%}
                       {{ qpl.short_name.value }}
                     {%- else -%}
-                      {{ qpl_identifier | strip }}
+                      {%- if qpl.document_type.value != blank -%}{{ qpl.document_type.value }}{%- endif -%}
+                      {%- if qpl.spec_number.value != blank -%}-{{ qpl.spec_number.value }}{%- endif -%}
+                      {%- if qpl.type.value != blank -%} Type {{ qpl.type.value }}{%- endif -%}
+                      {%- if qpl.class.value != blank -%} Class {{ qpl.class.value }}{%- endif -%}
                     {%- endif -%}
                   </span>
                 </li>
@@ -212,10 +189,7 @@
               {%- for cert in certifications -%}
                 {%- assign cert_trimmed = cert | strip -%}
                 {%- if cert_trimmed != blank -%}
-                  <li class="product-specifications__list-item" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
-                    <meta itemprop="name" content="Certification">
-                    <span itemprop="value">{{ cert_trimmed }}</span>
-                  </li>
+                  <li class="product-specifications__list-item">{{ cert_trimmed }}</li>
                 {%- endif -%}
               {%- endfor -%}
             </ul>
