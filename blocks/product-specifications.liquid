@@ -1,0 +1,432 @@
+{%- doc -%}
+  Product Specifications Block
+  Displays technical specifications and compliance information for aviation/defense products.
+  All fields are optional and only display when they have values.
+
+  Metafields used:
+  - custom.sae_color (single line text)
+  - custom.qpl (metaobject list - military_specification type with long_name, short_name, document_type, spec_number, revision, type, class, grade, supersedes)
+  - custom.military_specifications (metaobject list - same military_specification type)
+  - custom.applications (list.single_line_text_field - e.g., "Aviation", "Marine", "Industrial")
+  - custom.is_hazmat (boolean)
+  - custom.manufacturer_part_number (single line text)
+  - custom.nsn (single line text)
+  - custom.compliance_certifications (list.single_line_text_field, OEM certifications)
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  # Gather all metafield values
+  assign sae_color = product.metafields.custom.sae_color.value
+  assign qpl_list = product.metafields.custom.qpl.value
+
+  # Try both singular and plural handles for military specifications
+  assign mil_specs = product.metafields.custom.mil_specs.value
+
+  assign is_hazmat = product.metafields.custom.is_hazmat.value
+  assign mfr_part_number = product.metafields.custom.manufacturer_part_number.value
+  assign nsn = product.metafields.custom.nsn.value
+
+  # Handle applications - may be a list metafield (array) or comma-separated string
+  assign applications = product.metafields.custom.applications.value
+
+  # Handle compliance certifications - may be a list metafield (array) or semicolon-separated string
+  assign certifications = product.metafields.custom.compliance_certifications.value
+
+  # Check if we have any data to display
+  assign has_specs = false
+  if sae_color != blank or qpl_list != blank or mil_specs != blank or applications != blank or is_hazmat != nil or mfr_part_number != blank or nsn != blank or certifications != blank
+    assign has_specs = true
+  endif
+-%}
+
+{%- if has_specs -%}
+  <div
+    class="product-specifications product-specifications--{{ block.id }} spacing-style"
+    style="{% render 'spacing-style', settings: block.settings %}"
+    {{ block.shopify_attributes }}
+  >
+    {%- comment -%} Section Header {%- endcomment -%}
+    <h2 class="product-specifications__heading">
+      {{ block.settings.heading | default: 'Technical Specifications' }}
+    </h2>
+
+    {%- comment -%} Specifications Table using definition list for SEO {%- endcomment -%}
+    <dl class="product-specifications__list" itemscope itemtype="https://schema.org/Product">
+      <meta itemprop="name" content="{{ product.title | escape }}">
+
+      {%- comment -%} Manufacturer Part Number {%- endcomment -%}
+      {%- if mfr_part_number != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Manufacturer Part Number</dt>
+          <dd class="product-specifications__value" itemprop="mpn">{{ mfr_part_number }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} NSN - National Stock Number {%- endcomment -%}
+      {%- if nsn != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">
+            <abbr title="National Stock Number">NSN</abbr>
+          </dt>
+          <dd class="product-specifications__value" itemprop="productID">{{ nsn }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} SAE Color {%- endcomment -%}
+      {%- if sae_color != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">SAE Color</dt>
+          <dd class="product-specifications__value" itemprop="color">{{ sae_color }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Applications - handles both list metafield (array) and string formats {%- endcomment -%}
+      {%- if applications != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Applications</dt>
+          <dd class="product-specifications__value">
+            {%- comment -%} Check if it's an array (list metafield) by checking for .size {%- endcomment -%}
+            {%- if applications.size > 0 and applications.first != blank -%}
+              {%- comment -%} It's an array - iterate directly {%- endcomment -%}
+              {%- for app in applications -%}
+                <span class="product-specifications__tag" itemprop="category">{{ app | strip }}</span>
+              {%- endfor -%}
+            {%- else -%}
+              {%- comment -%} It's a string - split by comma {%- endcomment -%}
+              {%- assign app_list = applications | split: ',' -%}
+              {%- for app in app_list -%}
+                <span class="product-specifications__tag" itemprop="category">{{ app | strip }}</span>
+              {%- endfor -%}
+            {%- endif -%}
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Hazmat Status {%- endcomment -%}
+      {%- if is_hazmat != nil -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Hazardous Material</dt>
+          <dd class="product-specifications__value">
+            {%- if is_hazmat -%}
+              <span class="product-specifications__badge product-specifications__badge--hazmat">
+                <svg class="product-specifications__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                </svg>
+                Yes - Additional shipping fees may apply
+              </span>
+            {%- else -%}
+              <span class="product-specifications__badge product-specifications__badge--safe">No</span>
+            {%- endif -%}
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Military Specifications - metaobject with long_name, short_name, document_type, spec_number, etc. {%- endcomment -%}
+      {%- if mil_specs != blank and mil_specs.size > 0 -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Military Specifications</dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list">
+              {%- for spec in mil_specs -%}
+                <li class="product-specifications__list-item" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
+                  <meta itemprop="name" content="Military Specification">
+                  {%- comment -%} Build the spec identifier for structured data {%- endcomment -%}
+                  {%- capture spec_identifier -%}
+                    {%- if spec.document_type.value != blank -%}{{ spec.document_type.value }}{%- endif -%}
+                    {%- if spec.spec_number.value != blank -%}-{{ spec.spec_number.value }}{%- endif -%}
+                    {%- if spec.type.value != blank -%} Type {{ spec.type.value }}{%- endif -%}
+                    {%- if spec.class.value != blank -%} Class {{ spec.class.value }}{%- endif -%}
+                    {%- if spec.grade.value != blank -%} Grade {{ spec.grade.value }}{%- endif -%}
+                    {%- if spec.revision.value != blank -%}{{ spec.revision.value }}{%- endif -%}
+                  {%- endcapture -%}
+                  <meta itemprop="value" content="{{ spec_identifier | strip }}">
+                  <span>
+                    {%- comment -%} Display long_name if available, otherwise fall back to short_name or constructed identifier {%- endcomment -%}
+                    {%- if spec.long_name.value != blank -%}
+                      {{ spec.long_name.value }}
+                    {%- elsif spec.short_name.value != blank -%}
+                      {{ spec.short_name.value }}
+                    {%- else -%}
+                      {{ spec_identifier | strip }}
+                    {%- endif -%}
+                  </span>
+                </li>
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} QPL - Qualified Products List (same metaobject type as military_specifications) {%- endcomment -%}
+      {%- if qpl_list != blank and qpl_list.size > 0 -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">
+            <abbr title="Qualified Products List">QPL</abbr> Certifications
+          </dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list product-specifications__inline-list--certified">
+              {%- for qpl in qpl_list -%}
+                <li class="product-specifications__list-item product-specifications__list-item--certified" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
+                  <meta itemprop="name" content="QPL Certification">
+                  {%- comment -%} Build the spec identifier for structured data {%- endcomment -%}
+                  {%- capture qpl_identifier -%}
+                    {%- if qpl.document_type.value != blank -%}{{ qpl.document_type.value }}{%- endif -%}
+                    {%- if qpl.spec_number.value != blank -%}-{{ qpl.spec_number.value }}{%- endif -%}
+                    {%- if qpl.type.value != blank -%} Type {{ qpl.type.value }}{%- endif -%}
+                    {%- if qpl.class.value != blank -%} Class {{ qpl.class.value }}{%- endif -%}
+                    {%- if qpl.grade.value != blank -%} Grade {{ qpl.grade.value }}{%- endif -%}
+                    {%- if qpl.revision.value != blank -%}{{ qpl.revision.value }}{%- endif -%}
+                  {%- endcapture -%}
+                  <meta itemprop="value" content="{{ qpl_identifier | strip }}">
+                  <svg class="product-specifications__check-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+                  </svg>
+                  <span>
+                    {%- comment -%} Display long_name if available, otherwise fall back to short_name or constructed identifier {%- endcomment -%}
+                    {%- if qpl.long_name.value != blank -%}
+                      {{ qpl.long_name.value }}
+                    {%- elsif qpl.short_name.value != blank -%}
+                      {{ qpl.short_name.value }}
+                    {%- else -%}
+                      {{ qpl_identifier | strip }}
+                    {%- endif -%}
+                  </span>
+                </li>
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Compliance & Certifications {%- endcomment -%}
+      {%- if certifications != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Compliance & Certifications</dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list">
+              {%- for cert in certifications -%}
+                {%- assign cert_trimmed = cert | strip -%}
+                {%- if cert_trimmed != blank -%}
+                  <li class="product-specifications__list-item" itemprop="additionalProperty" itemscope itemtype="https://schema.org/PropertyValue">
+                    <meta itemprop="name" content="Certification">
+                    <span itemprop="value">{{ cert_trimmed }}</span>
+                  </li>
+                {%- endif -%}
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+    </dl>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .product-specifications {
+    width: 100%;
+    margin-block-start: var(--margin-lg);
+  }
+
+  .product-specifications__heading {
+    font-family: var(--font-heading--family);
+    font-size: var(--font-size--lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-foreground-heading);
+    margin: 0 0 var(--margin-md) 0;
+    padding-block-end: var(--padding-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .product-specifications__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .product-specifications__row {
+    display: grid;
+    grid-template-columns: minmax(140px, 200px) 1fr;
+    gap: var(--gap-md);
+    padding: var(--padding-sm) 0;
+    border-bottom: 1px solid rgb(var(--color-foreground-rgb) / 0.08);
+    align-items: baseline;
+  }
+
+  .product-specifications__row:last-child {
+    border-bottom: none;
+  }
+
+  .product-specifications__label {
+    font-family: var(--font-body--family);
+    font-size: var(--font-size--sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-foreground-secondary);
+    margin: 0;
+  }
+
+  .product-specifications__label abbr {
+    text-decoration: none;
+    border-bottom: 1px dotted var(--color-foreground-secondary);
+    cursor: help;
+  }
+
+  .product-specifications__value {
+    font-family: var(--font-body--family);
+    font-size: var(--font-size--sm);
+    color: var(--color-foreground);
+    margin: 0;
+    word-break: break-word;
+  }
+
+  /* Tags for Applications */
+  .product-specifications__tag {
+    display: inline-block;
+    padding: var(--padding-2xs) var(--padding-sm);
+    margin-right: var(--margin-xs);
+    margin-bottom: var(--margin-2xs);
+    background: rgb(var(--color-foreground-rgb) / 0.06);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-weight-medium);
+  }
+
+  /* Badge styles for Hazmat */
+  .product-specifications__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-xs);
+    padding: var(--padding-2xs) var(--padding-sm);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    font-size: var(--font-size--sm);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .product-specifications__badge--hazmat {
+    background: rgb(234 88 12 / 0.1);
+    color: rgb(194 65 12);
+  }
+
+  .product-specifications__badge--safe {
+    background: rgb(var(--color-foreground-rgb) / 0.06);
+    color: var(--color-foreground);
+  }
+
+  .product-specifications__icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  /* Inline lists for specs/certs - maintains tabular alignment */
+  .product-specifications__inline-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2xs);
+  }
+
+  .product-specifications__list-item {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-xs);
+    line-height: 1.4;
+  }
+
+  .product-specifications__list-item--certified {
+    color: rgb(21 128 61);
+  }
+
+  .product-specifications__check-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: rgb(22 163 74);
+  }
+
+  /* Mobile responsiveness */
+  @media screen and (max-width: 749px) {
+    .product-specifications__row {
+      grid-template-columns: 1fr;
+      gap: var(--gap-2xs);
+    }
+
+    .product-specifications__label {
+      font-weight: var(--font-weight-semibold);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Product Specifications",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Technical Specifications"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Specifications",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

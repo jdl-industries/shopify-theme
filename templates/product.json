@@ -257,6 +257,18 @@
                 "padding-inline-end": 0
               },
               "blocks": {}
+            },
+            "product_specifications_jdl": {
+              "type": "product-specifications",
+              "name": "Technical Specifications",
+              "settings": {
+                "heading": "Technical Specifications",
+                "padding-block-start": 24,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
             }
           },
           "block_order": [
@@ -265,7 +277,8 @@
             "variant_picker_R3rGDr",
             "price_aWYheQ",
             "buy_buttons_eYQEYi",
-            "text_aEtTtq"
+            "text_aEtTtq",
+            "product_specifications_jdl"
           ]
         }
       },
