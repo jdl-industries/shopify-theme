@@ -1,0 +1,603 @@
+{% capture submit_button %}
+  <button type="submit" class="button custom-contact-form__submit">
+    {{ section.settings.submit_label | default: 'Submit' }}
+  </button>
+{% endcapture %}
+
+{% assign form_id = section.id | prepend: 'ContactForm-' %}
+
+<div class="section-background color-{{ section.settings.color_scheme }}"></div>
+<div
+  class="section section--{{ section.settings.section_width }} color-{{ section.settings.color_scheme }}"
+  style="
+    {% if section.settings.section_height == 'custom' %}
+      --section-min-height: {{ section.settings.section_height_custom }}svh;
+    {% elsif section.settings.section_height == 'full-screen' %}
+      --section-min-height: 100svh;
+    {% elsif section.settings.section_height != '' %}
+      --section-min-height: var(--section-height-{{ section.settings.section_height }});
+    {% endif %}
+  "
+>
+  <div
+    class="border-style custom-section-content"
+    style="{% render 'border-override', settings: section.settings %}"
+  >
+    <div
+      class="
+        spacing-style
+        layout-panel-flex
+        layout-panel-flex--{{ section.settings.content_direction }}
+        section-content-wrapper
+        {% if section.settings.vertical_on_mobile %}mobile-column{% endif %}
+      "
+      style="
+        {% render 'layout-panel-style', settings: section.settings %}
+        {% render 'spacing-style', settings: section.settings %}
+      "
+    >
+      {%- form 'contact', id: form_id, class: 'custom-contact-form' -%}
+        <!-- Left Column: Title/Description or Success Message -->
+        <div class="custom-contact-form__left">
+          {%- if form.posted_successfully? -%}
+            <div class="custom-contact-form__success" tabindex="-1" autofocus>
+              {{- 'icon-checkmark.svg' | inline_asset_content -}}
+              <h3 class="custom-contact-form__success-heading">
+                {{ section.settings.success_heading | default: 'Thank you!' }}
+              </h3>
+              <p class="custom-contact-form__success-message">
+                {{ section.settings.success_message | default: 'Your message has been sent. We will get back to you soon.' }}
+              </p>
+            </div>
+          {%- else -%}
+            <div class="custom-contact-form__header">
+              {%- if section.settings.heading != blank -%}
+                <h3 class="custom-contact-form__heading h3">{{ section.settings.heading }}</h3>
+              {%- endif -%}
+              {%- if section.settings.description != blank -%}
+                <div class="custom-contact-form__description rte">{{ section.settings.description }}</div>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+        </div>
+
+        <!-- Right Column: Form Fields or Empty on Success -->
+        <div class="custom-contact-form__right">
+          {%- unless form.posted_successfully? -%}
+            {%- if form.errors -%}
+              <div class="custom-contact-form__error" tabindex="-1" autofocus>
+                {{- 'icon-error.svg' | inline_asset_content -}}
+                {{- form.errors.translated_fields.email | capitalize }}
+                {{ form.errors.messages.email -}}
+              </div>
+            {%- endif -%}
+
+            <div class="custom-contact-form__fields">
+              <div class="custom-contact-form__row">
+                <div class="custom-contact-form__field">
+                  <label class="visually-hidden" for="{{ form_id }}-name">
+                    {{ section.settings.name_label | default: 'Name' }}
+                  </label>
+                  <input
+                    type="text"
+                    id="{{ form_id }}-name"
+                    class="custom-contact-form__input"
+                    autocomplete="name"
+                    name="contact[name]"
+                    value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
+                    placeholder="{{ section.settings.name_label | default: 'Name' }}"
+                  >
+                </div>
+
+                <div class="custom-contact-form__field">
+                  <label class="visually-hidden" for="{{ form_id }}-phone">
+                    {{ section.settings.phone_label | default: 'Phone' }}
+                  </label>
+                  <input
+                    type="tel"
+                    id="{{ form_id }}-phone"
+                    class="custom-contact-form__input"
+                    autocomplete="tel"
+                    name="contact[phone]"
+                    value="{% if form.phone %}{{ form.phone }}{% elsif customer %}{{ customer.phone }}{% endif %}"
+                    placeholder="{{ section.settings.phone_label | default: 'Phone' }}"
+                  >
+                </div>
+              </div>
+
+              <div class="custom-contact-form__field">
+                <label class="visually-hidden" for="{{ form_id }}-email">
+                  {{ section.settings.email_label | default: 'Email' }}
+                  <span aria-hidden="true">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="{{ form_id }}-email"
+                  class="custom-contact-form__input"
+                  autocomplete="email"
+                  name="contact[email]"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+                  aria-required="true"
+                  {% if form.errors contains 'email' %}
+                    aria-invalid="true"
+                    aria-describedby="{{ form_id }}-email-error"
+                  {% endif %}
+                  placeholder="{{ section.settings.email_label | default: 'Email' }}"
+                >
+              </div>
+
+              <div class="custom-contact-form__field">
+                <label class="visually-hidden" for="{{ form_id }}-body">
+                  {{ section.settings.message_label | default: 'Message' }}
+                </label>
+                <textarea
+                  rows="6"
+                  id="{{ form_id }}-body"
+                  class="custom-contact-form__input custom-contact-form__input--textarea"
+                  name="contact[body]"
+                  placeholder="{{ section.settings.message_label | default: 'Message' }}"
+                >{{- form.body -}}</textarea>
+              </div>
+
+              {{ submit_button }}
+            </div>
+          {%- endunless -%}
+        </div>
+      {%- endform -%}
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .custom-contact-form {
+    display: contents;
+  }
+
+  .custom-contact-form__left,
+  .custom-contact-form__right {
+    flex: 1;
+    width: 100%;
+  }
+
+  .custom-contact-form__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+
+  .custom-contact-form__heading {
+    margin: 0;
+  }
+
+  .custom-contact-form__description {
+    margin: 0;
+  }
+
+  .custom-contact-form__fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+
+  .custom-contact-form__row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+
+    @media screen and (min-width: 750px) {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  .custom-contact-form__field {
+    flex: 1;
+    width: 100%;
+  }
+
+  .custom-contact-form__input {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-input-text);
+    background-color: var(--color-input-background);
+    padding: var(--padding-lg) var(--padding-xl);
+    border-radius: var(--style-border-radius-inputs);
+    border: var(--style-border-width-inputs) solid var(--color-input-border);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .custom-contact-form__input--textarea {
+    resize: vertical;
+    min-height: var(--input-textarea-min-height);
+  }
+
+  .custom-contact-form__error,
+  .custom-contact-form__success {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+
+  .custom-contact-form__error {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--gap-xs);
+  }
+
+  .custom-contact-form__success svg {
+    width: 32px;
+    height: 32px;
+    color: var(--color-foreground);
+  }
+
+  .custom-contact-form__success-heading {
+    margin: 0;
+  }
+
+  .custom-contact-form__success-message {
+    margin: 0;
+  }
+
+  .custom-contact-form__submit {
+    align-self: flex-start;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Custom Contact Form",
+  "tag": "section",
+  "class": "section-wrapper",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Contact Us"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "Description",
+      "default": "<p>Have a question or need assistance? Fill out the form and we'll get back to you as soon as possible.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Form Labels"
+    },
+    {
+      "type": "text",
+      "id": "name_label",
+      "label": "Name field label",
+      "default": "Name"
+    },
+    {
+      "type": "text",
+      "id": "phone_label",
+      "label": "Phone field label",
+      "default": "Phone"
+    },
+    {
+      "type": "text",
+      "id": "email_label",
+      "label": "Email field label",
+      "default": "Email"
+    },
+    {
+      "type": "text",
+      "id": "message_label",
+      "label": "Message field label",
+      "default": "Message"
+    },
+    {
+      "type": "text",
+      "id": "submit_label",
+      "label": "Submit button label",
+      "default": "Submit"
+    },
+    {
+      "type": "header",
+      "content": "Success Message"
+    },
+    {
+      "type": "text",
+      "id": "success_heading",
+      "label": "Success heading",
+      "default": "Thank you!"
+    },
+    {
+      "type": "text",
+      "id": "success_message",
+      "label": "Success message",
+      "default": "Your message has been sent. We will get back to you soon."
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "content_direction",
+      "label": "t:settings.direction",
+      "options": [
+        {
+          "value": "column",
+          "label": "t:options.vertical"
+        },
+        {
+          "value": "row",
+          "label": "t:options.horizontal"
+        }
+      ],
+      "default": "row"
+    },
+    {
+      "type": "checkbox",
+      "id": "vertical_on_mobile",
+      "label": "t:settings.vertical_on_mobile",
+      "default": true,
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.right"
+        },
+        {
+          "value": "space-between",
+          "label": "t:options.space_between"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "vertical_alignment",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.top"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.bottom"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment_flex_direction_column",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction != 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "vertical_alignment_flex_direction_column",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.top"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.bottom"
+        },
+        {
+          "value": "space-between",
+          "label": "t:options.space_between"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction == 'column' }}"
+    },
+    {
+      "type": "range",
+      "id": "gap",
+      "label": "t:settings.gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "header",
+      "content": "t:content.size"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:settings.width",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "t:options.page"
+        },
+        {
+          "value": "full-width",
+          "label": "t:options.full"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "select",
+      "id": "section_height",
+      "label": "t:settings.height",
+      "options": [
+        {
+          "value": "",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "small",
+          "label": "t:options.small"
+        },
+        {
+          "value": "medium",
+          "label": "t:options.medium"
+        },
+        {
+          "value": "large",
+          "label": "t:options.large"
+        },
+        {
+          "value": "full-screen",
+          "label": "t:options.full_screen"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": ""
+    },
+    {
+      "type": "range",
+      "id": "section_height_custom",
+      "label": "t:settings.custom_height",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "default": 50,
+      "unit": "%",
+      "visible_if": "{{ section.settings.section_height == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "px",
+      "label": "t:settings.border_width",
+      "default": 1,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "t:settings.border_opacity",
+      "default": 100,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 40
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom Contact Form",
+      "category": "t:categories.forms"
+    }
+  ]
+}
+{% endschema %}
