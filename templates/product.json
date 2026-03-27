@@ -101,9 +101,9 @@
             "aspect_ratio": "adapt",
             "constrain_to_viewport": true,
             "media_fit": "contain",
-            "media_radius": 0,
+            "media_radius": 4,
             "extend_media": false,
-            "zoom": true,
+            "zoom": false,
             "video_loop": false,
             "hide_variants": true,
             "padding-block-start": 0,
@@ -225,6 +225,32 @@
                 "text_xrnftG"
               ]
             },
+            "text_aEtTtq": {
+              "type": "text",
+              "name": "Product description",
+              "settings": {
+                "text": "{{ closest.product.description }}",
+                "width": "100%",
+                "max_width": "normal",
+                "alignment": "left",
+                "type_preset": "rte",
+                "font": "var(--font-primary--family)",
+                "font_size": "",
+                "line_height": "normal",
+                "letter_spacing": "normal",
+                "case": "none",
+                "wrap": "pretty",
+                "color": "",
+                "background": false,
+                "background_color": "#00000026",
+                "corner_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
+            },
             "variant_picker_R3rGDr": {
               "type": "variant-picker",
               "settings": {
@@ -296,32 +322,6 @@
               },
               "block_order": []
             },
-            "text_aEtTtq": {
-              "type": "text",
-              "name": "Product description",
-              "settings": {
-                "text": "{{ closest.product.description }}",
-                "width": "100%",
-                "max_width": "normal",
-                "alignment": "left",
-                "type_preset": "rte",
-                "font": "var(--font-primary--family)",
-                "font_size": "",
-                "line_height": "normal",
-                "letter_spacing": "normal",
-                "case": "none",
-                "wrap": "pretty",
-                "color": "",
-                "background": false,
-                "background_color": "#00000026",
-                "corner_radius": 0,
-                "padding-block-start": 0,
-                "padding-block-end": 0,
-                "padding-inline-start": 0,
-                "padding-inline-end": 0
-              },
-              "blocks": {}
-            },
             "product_specifications_jdl": {
               "type": "product-specifications",
               "name": "Technical Specifications",
@@ -337,10 +337,10 @@
           },
           "block_order": [
             "group_icgrde",
+            "text_aEtTtq",
             "variant_picker_R3rGDr",
             "price_aWYheQ",
             "buy_buttons_eYQEYi",
-            "text_aEtTtq",
             "product_specifications_jdl"
           ]
         }
