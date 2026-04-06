@@ -90,16 +90,69 @@
         "disabled": false,
         "settings": {}
       },
-      "9776720720251544092": {
-        "type": "shopify://apps/helium-customer-fields/blocks/app-embed/bab58598-3e6a-4377-aaaa-97189b15f131",
+      "5873870872399750572": {
+        "type": "shopify://apps/bold-custom-pricing-wholesale/blocks/v2_cart-prices/27ce59c5-d805-4118-89c7-4a7fe286ddce",
         "disabled": false,
         "settings": {
-          "registration_form_id": "lXtD37",
-          "edit_account_form_id": "lXtD37",
-          "edit_account_link_text": "Edit account",
-          "edit_account_heading": "Edit account",
-          "edit_account_back_link_text": "Back to account",
-          "enable_js_api": false
+          "enable-compare-at": false,
+          "cart-total-value-locator": ".cart__total-value, .totals__total-value",
+          "cart_item_list_locator": ".cart-items__table, table.cart-items",
+          "cart-item-locator": "tr[ref=\"cartItemRows[]\"], .cart-item",
+          "cart-line-item-price-locator": "text-component, .price.price--end",
+          "cart-item-price-locator": "span:not(.svg-wrapper, .visually-hidden), .product-option",
+          "cart-checkout-button-id": "[name='checkout']",
+          "check-cart-change-interval": 1000,
+          "delay-cart-price-update": 500
+        }
+      },
+      "14041076102899632076": {
+        "type": "shopify://apps/bold-custom-pricing-wholesale/blocks/v2_qb_grid/27ce59c5-d805-4118-89c7-4a7fe286ddce",
+        "disabled": false,
+        "settings": {
+          "inject-grid-in": "form[action='/cart/add']",
+          "check-variant-change-interval-v2": 1000,
+          "delay-initial-grid-load-v2": 500,
+          "grid_font_size": 12,
+          "grid_head_font_color": "#000",
+          "grid_head_bg_color": "#D6D6D6",
+          "grid_bg_color_even_row": "#EFEFEF",
+          "grid_bg_color_odd_row": "#FFF",
+          "grid_body_font_color": "#000",
+          "grid_border_size": 1,
+          "grid_border_color": "#ccc",
+          "grid_additional_css": "#bold_qb_grid {}"
+        }
+      },
+      "14178710579409371317": {
+        "type": "shopify://apps/bold-custom-pricing-wholesale/blocks/v2_price/27ce59c5-d805-4118-89c7-4a7fe286ddce",
+        "disabled": false,
+        "settings": {
+          "delay-after-page-load-v2": 200,
+          "check-variant-change-interval-v2": 1000,
+          "delay-price-change-v2": 100,
+          "product-price-locator-v2": "span.price, .price-item.price-item--regular",
+          "enable-compare-at": false,
+          "product-sale-price-locator-v2": ".price-item.price-item--sale",
+          "collection-item-locator": ".product-card, .card-wrapper",
+          "collection-item-price-locator": "span.price, .price-item.price-item--regular",
+          "delay-after-content-change-v2": 100,
+          "enable-product-drawer": false,
+          "listen-product-fetch": "/products/",
+          "drawer-locator": ".quick-add-modal__content.global-settings-popup, div.featured-product",
+          "drawer-price-locator": "span.price-item.price-item--regular",
+          "listen-search": "/search",
+          "search-result-item-locator": ".resource-card__link, li.predictive-search__list-item, div.card-wrapper",
+          "search-result-price-locator": "span.price, span.price-item.price-item--regular",
+          "locator-for-other-product-elements": ".card-wrapper",
+          "price-locator-for-other-product-elements": ".price-item.price-item--regular"
+        }
+      },
+      "9136747942555918944": {
+        "type": "shopify://apps/bold-custom-pricing-wholesale/blocks/bold-common/27ce59c5-d805-4118-89c7-4a7fe286ddce",
+        "disabled": false,
+        "settings": {
+          "dump_all_collections": false,
+          "delay_collection_load": 100
         }
       }
     },
