@@ -68,6 +68,10 @@
     {% endif %}
   "
 
+  {% if block_settings.scroll_animation and block_settings.scroll_animation != 'none' %}
+    data-scroll-reveal="{{ block_settings.scroll_animation }}"
+  {% endif %}
+
   {{ block.shopify_attributes }}
 {% endcapture %}
 

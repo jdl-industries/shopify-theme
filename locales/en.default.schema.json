@@ -34,6 +34,7 @@
   "content": {
     "visible_if_collection_has_more_products": "Visible if collection has more products than shown",
     "advanced": "Advanced",
+    "animation": "Animation",
     "appearance": "Appearance",
     "arrows": "Arrows",
     "background": "Background",
@@ -218,6 +219,7 @@
     "custom_heading": "Custom heading",
     "custom_liquid": "Add app snippets or other code to create advanced customizations. [Learn more](https://shopify.dev/docs/api/liquid)",
     "edit_presets_in_theme_settings": "Edit presets in [theme settings](/editor?context=theme&category=typography)",
+    "entrance_animation": "Content fades in on page load. Respects reduced motion preferences.",
     "enable_filtering_info": "Customize filters with the [Search & Discovery app](https://help.shopify.com/manual/online-store/search-and-discovery/filters)",
     "grid_layout_on_mobile": "Grid layout is used for mobile",
     "hide_logo_on_home_page_help": "Logo will remain visible when sticky header is active",
@@ -231,7 +233,8 @@
     "video_autoplay": "Videos will be muted by default",
     "video_external": "Use a YouTube or Vimeo URL",
     "pills_usage": "Used for applied filters, discount codes, and search suggestions",
-    "media_type_info": "Features are populated from your menu links"
+    "media_type_info": "Features are populated from your menu links",
+    "scroll_animation": "Animates when scrolled into view. Respects reduced motion preferences."
   },
   "names": {
     "column": "Column",
@@ -517,6 +520,9 @@
     // Icon option for decorative eye symbol
     "eye": "Eye",
     "facebook": "Facebook",
+    "fade_in": "Fade in",
+    "fade_scale": "Fade with scale",
+    "fade_up": "Fade up",
     "featured_collections": "Featured collections",
     "featured_products": "Featured products",
     "fill": "Fill",
@@ -858,6 +864,7 @@
     "enable_sticky_content": "Sticky content on desktop",
     "enable_video_looping": "Video looping",
     "enable_zoom": "Enable zoom",
+    "entrance_animation": "Entrance animation",
     "equal_columns": "Equal columns",
     "error_color": "Error",
     "expand_first_group": "Expand first group",
@@ -1054,6 +1061,7 @@
     "right_padding": "Right padding",
     "row": "Row",
     "scroll_speed": "Time to next announcement",
+    "scroll_animation": "Scroll animation",
     "search": "Search",
     "search_icon": "Search icon",
     // Setting for search bar placement in header

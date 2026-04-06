@@ -3936,6 +3936,98 @@ text-component {
   transition: border-color var(--animation-speed-medium) var(--animation-timing-hover);
 }
 
+/* ============================================
+   Scroll-Reveal Animations
+   Subtle entrance animations triggered on scroll
+   ============================================ */
+
+/* Base state for scroll-reveal elements */
+[data-scroll-reveal] {
+  --reveal-duration: 0.9s;
+  --reveal-delay: 0s;
+  --reveal-distance: 40px;
+  --reveal-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Stagger delays for sequential reveals */
+[data-scroll-reveal][data-reveal-delay="1"] { --reveal-delay: 0.1s; }
+[data-scroll-reveal][data-reveal-delay="2"] { --reveal-delay: 0.2s; }
+[data-scroll-reveal][data-reveal-delay="3"] { --reveal-delay: 0.3s; }
+[data-scroll-reveal][data-reveal-delay="4"] { --reveal-delay: 0.4s; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Fade Up - most common, subtle lift effect */
+  [data-scroll-reveal="fade-up"] {
+    opacity: 0;
+    transform: translateY(var(--reveal-distance));
+    transition: opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+                transform var(--reveal-duration) var(--reveal-easing) var(--reveal-delay);
+  }
+
+  [data-scroll-reveal="fade-up"].is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Fade In - simple opacity transition */
+  [data-scroll-reveal="fade-in"] {
+    opacity: 0;
+    transition: opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay);
+  }
+
+  [data-scroll-reveal="fade-in"].is-visible {
+    opacity: 1;
+  }
+
+  /* Fade Scale - zoom effect */
+  [data-scroll-reveal="fade-scale"] {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+                transform var(--reveal-duration) var(--reveal-easing) var(--reveal-delay);
+  }
+
+  [data-scroll-reveal="fade-scale"].is-visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Slide In Left */
+  [data-scroll-reveal="slide-left"] {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--reveal-distance)));
+    transition: opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+                transform var(--reveal-duration) var(--reveal-easing) var(--reveal-delay);
+  }
+
+  [data-scroll-reveal="slide-left"].is-visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Slide In Right */
+  [data-scroll-reveal="slide-right"] {
+    opacity: 0;
+    transform: translateX(var(--reveal-distance));
+    transition: opacity var(--reveal-duration) var(--reveal-easing) var(--reveal-delay),
+                transform var(--reveal-duration) var(--reveal-easing) var(--reveal-delay);
+  }
+
+  [data-scroll-reveal="slide-right"].is-visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Reduced motion fallback - instant visibility */
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 /* Global scrollbar styles */
 
 /* Webkit browsers */

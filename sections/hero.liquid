@@ -527,6 +527,7 @@
         section-content-wrapper
         {{section.settings.section_width}}
         {% if request.design_mode %}hero__content-wrapper--design-mode{% endif %}
+        {% if section.settings.entrance_animation %}hero__content-wrapper--animate{% endif %}
       "
       style="{% render 'layout-panel-style', settings: section.settings %}"
     >
@@ -751,6 +752,29 @@
       &:last-child {
         right: 0;
         left: auto;
+      }
+    }
+  }
+
+  /* Hero entrance animation - staggered fade up for content blocks */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__content-wrapper--animate > * {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: heroContentReveal 0.6s var(--animation-timing-fade-in) forwards;
+    }
+
+    .hero__content-wrapper--animate > *:nth-child(1) { animation-delay: 0.15s; }
+    .hero__content-wrapper--animate > *:nth-child(2) { animation-delay: 0.25s; }
+    .hero__content-wrapper--animate > *:nth-child(3) { animation-delay: 0.35s; }
+    .hero__content-wrapper--animate > *:nth-child(4) { animation-delay: 0.45s; }
+    .hero__content-wrapper--animate > *:nth-child(5) { animation-delay: 0.55s; }
+    .hero__content-wrapper--animate > *:nth-child(n+6) { animation-delay: 0.65s; }
+
+    @keyframes heroContentReveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
   }
@@ -1158,6 +1182,13 @@
       "id": "color_scheme",
       "label": "t:settings.color_scheme",
       "default": "scheme-1"
+    },
+    {
+      "type": "checkbox",
+      "id": "entrance_animation",
+      "label": "t:settings.entrance_animation",
+      "info": "t:info.entrance_animation",
+      "default": false
     },
     {
       "type": "checkbox",
