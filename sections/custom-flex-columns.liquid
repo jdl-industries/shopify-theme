@@ -1,0 +1,153 @@
+{%- liquid
+  assign color_scheme_class = ''
+  if section.settings.color_scheme != blank and section.settings.color_scheme != 'none'
+    assign color_scheme_class = 'color-' | append: section.settings.color_scheme
+  endif
+-%}
+
+<div class="contact-info-section {{ color_scheme_class }}" style="--section-padding-top: {{ section.settings.padding_top }}px; --section-padding-bottom: {{ section.settings.padding_bottom }}px;">
+  <div class="page-width">
+    <div class="contact-info-section__container">
+      <div class="contact-info-section__content">
+        {{ section.settings.column_1_html }}
+      </div>
+      <div class="contact-info-section__map">
+        {{ section.settings.column_2_html }}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% stylesheet %}
+  .contact-info-section {
+    padding-block-start: var(--section-padding-top, 48px);
+    padding-block-end: var(--section-padding-bottom, 48px);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  .contact-info-section__container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--padding-lg, 32px);
+    align-items: center;
+  }
+
+  .contact-info-section__content {
+    flex: 1 1 320px;
+    min-width: 280px;
+  }
+
+  .contact-info-section__content address {
+    font-style: normal;
+    line-height: 1.7;
+  }
+
+  .contact-info-section__content strong {
+    font-size: var(--font-h4--size, 1.25rem);
+    font-weight: var(--font-heading--weight, 700);
+    color: var(--color-foreground-heading);
+    display: block;
+    margin-bottom: 0.5em;
+  }
+
+  .contact-info-section__content a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--animation-speed-medium, 0.15s) ease;
+  }
+
+  .contact-info-section__content a:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+  }
+
+  .contact-info-section__map {
+    flex: 1 1 400px;
+    min-width: 300px;
+  }
+
+  .contact-info-section__map iframe {
+    width: 100%;
+    height: 350px;
+    border: 0;
+    border-radius: var(--style-border-radius-cards, 8px);
+    box-shadow: 0 4px 20px rgb(var(--color-shadow-rgb, 0 0 0) / 0.1);
+  }
+
+  /* Mobile adjustments */
+  @media screen and (max-width: 749px) {
+    .contact-info-section__container {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .contact-info-section__content,
+    .contact-info-section__map {
+      flex: 1 1 100%;
+      width: 100%;
+    }
+
+    .contact-info-section__map iframe {
+      height: 280px;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Contact Info + Map",
+  "tag": "section",
+  "class": "section-wrapper",
+  "settings": [
+    {
+      "type": "html",
+      "id": "column_1_html",
+      "label": "Contact Info (HTML)",
+      "default": "<address>\n  <strong>Company Name</strong><br>\n  123 Street Address<br>\n  City, State 12345<br><br>\n  Phone: <a href=\"tel:+15551234567\">(555) 123-4567</a>\n</address>"
+    },
+    {
+      "type": "html",
+      "id": "column_2_html",
+      "label": "Map Embed (HTML)",
+      "default": "<iframe src=\"https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.1!2d-73.98!3d40.75!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDDCsDQ1JzAwLjAiTiA3M8KwNTgnNDguMCJX!5e0!3m2!1sen!2sus!4v1234567890\" width=\"600\" height=\"450\" allowfullscreen=\"\" loading=\"lazy\"></iframe>",
+      "info": "Paste a Google Maps embed iframe here"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-2"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "Contact Info + Map"
+    }
+  ]
+}
+{% endschema %}

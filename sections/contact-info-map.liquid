@@ -1,0 +1,346 @@
+{%- liquid
+  assign color_scheme_class = ''
+  if section.settings.color_scheme != blank
+    assign color_scheme_class = 'color-' | append: section.settings.color_scheme
+  endif
+-%}
+
+<div
+  class="section section--page-width contact-info-map {{ color_scheme_class }}"
+  style="
+    --section-padding-block-start: {{ section.settings.padding_top }}px;
+    --section-padding-block-end: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="{% if section.settings.section_width == 'page-width' %}page-width{% endif %} contact-info-map__inner">
+    {%- if section.settings.heading != blank -%}
+      <h2 class="contact-info-map__heading h3">{{ section.settings.heading }}</h2>
+    {%- endif -%}
+
+    <div class="contact-info-map__container">
+      <div class="contact-info-map__details">
+        <address class="contact-info-map__address">
+          {%- if section.settings.company_name != blank -%}
+            <strong class="contact-info-map__company">{{ section.settings.company_name }}</strong>
+          {%- endif -%}
+
+          {%- if section.settings.address_line_1 != blank -%}
+            {{ section.settings.address_line_1 }}<br>
+          {%- endif -%}
+
+          {%- if section.settings.address_line_2 != blank -%}
+            {{ section.settings.address_line_2 }}<br>
+          {%- endif -%}
+
+          {%- if section.settings.city != blank or section.settings.state != blank or section.settings.zip != blank -%}
+              {{- section.settings.city -}}
+              {%- if section.settings.city != blank and section.settings.state != blank -%}, {% endif -%}
+              {{- section.settings.state }} {{ section.settings.zip -}}<br>
+          {%- endif -%}
+        </address>
+
+        <div class="contact-info-map__contact">
+          {%- if section.settings.phone != blank -%}
+            <div class="contact-info-map__phone">
+              <span class="contact-info-map__label">Phone:</span>
+              <a href="tel:{{ section.settings.phone | remove: ' ' | remove: '(' | remove: ')' | remove: '-' }}">
+                {{- section.settings.phone -}}
+              </a>
+            </div>
+          {%- endif -%}
+
+          {%- if section.settings.fax != blank -%}
+            <div class="contact-info-map__fax">
+              <span class="contact-info-map__label">Fax:</span>
+              <span>{{ section.settings.fax }}</span>
+            </div>
+          {%- endif -%}
+
+          {%- if section.settings.email != blank -%}
+            <div class="contact-info-map__email">
+              <span class="contact-info-map__label">Email:</span>
+              <a href="mailto:{{ section.settings.email }}">{{ section.settings.email }}</a>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+
+      {%- if section.settings.map_embed != blank -%}
+        <div class="contact-info-map__map">
+          {{ section.settings.map_embed }}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+
+  {%- comment -%} Schema.org structured data for SEO {%- endcomment -%}
+  {%- if section.settings.enable_schema -%}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": {{ section.settings.company_name | json }},
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": {{ section.settings.address_line_1 | append: ' ' | append: section.settings.address_line_2 | strip | json }},
+          "addressLocality": {{ section.settings.city | json }},
+          "addressRegion": {{ section.settings.state | json }},
+          "postalCode": {{ section.settings.zip | json }},
+          "addressCountry": "US"
+        }
+        {%- if section.settings.phone != blank -%}
+          ,"telephone": {{ section.settings.phone | json }}
+        {%- endif -%}
+        {%- if section.settings.fax != blank -%}
+          ,"faxNumber": {{ section.settings.fax | json }}
+        {%- endif -%}
+        {%- if section.settings.email != blank -%}
+          ,"email": {{ section.settings.email | json }}
+        {%- endif -%}
+        {%- if shop.url != blank -%}
+          ,"url": {{ shop.url | json }}
+        {%- endif -%}
+      }
+    </script>
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+  .contact-info-map {
+    padding-block-start: var(--section-padding-block-start);
+    padding-block-end: var(--section-padding-block-end);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  .contact-info-map__heading {
+    margin-block-end: var(--padding-lg);
+    color: var(--color-foreground-heading);
+  }
+
+  .contact-info-map__container {
+    display: flex;
+    gap: var(--padding-xl);
+    align-items: flex-start;
+  }
+
+  .contact-info-map__details {
+    flex: 0 0 auto;
+    min-width: 240px;
+  }
+
+  .contact-info-map__address {
+    font-style: normal;
+    display: flex;
+    flex-direction: column;
+    margin-block-end: var(--padding-md);
+  }
+
+  .contact-info-map__company {
+    font-family: var(--font-heading--family);
+    font-weight: var(--font-heading--weight);
+    font-size: var(--font-h4--size);
+    color: var(--color-foreground-heading);
+    margin-block-end: 0.25em;
+  }
+
+  .contact-info-map__contact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+  }
+
+  .contact-info-map__label {
+    font-weight: 500;
+  }
+
+  .contact-info-map__contact a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--animation-speed-medium) ease;
+  }
+
+  .contact-info-map__contact a:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+  }
+
+  .contact-info-map__map {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .contact-info-map__map iframe {
+    display: block;
+    width: 100%;
+    height: 350px;
+    border: 0;
+    border-radius: var(--style-border-radius-cards, 8px);
+  }
+
+  @media screen and (max-width: 749px) {
+    .contact-info-map__container {
+      flex-direction: column;
+      gap: var(--padding-lg);
+    }
+
+    .contact-info-map__details {
+      width: 100%;
+    }
+
+    .contact-info-map__map {
+      width: 100%;
+    }
+
+    .contact-info-map__map iframe {
+      height: 280px;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Contact Info + Map",
+  "tag": "section",
+  "class": "section-contact-info-map",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading"
+    },
+    {
+      "type": "header",
+      "content": "Company Information"
+    },
+    {
+      "type": "text",
+      "id": "company_name",
+      "label": "Company name",
+      "default": "Company Name"
+    },
+    {
+      "type": "text",
+      "id": "address_line_1",
+      "label": "Address line 1",
+      "default": "123 Main Street"
+    },
+    {
+      "type": "text",
+      "id": "address_line_2",
+      "label": "Address line 2",
+      "default": "Suite 100"
+    },
+    {
+      "type": "text",
+      "id": "city",
+      "label": "City",
+      "default": "City"
+    },
+    {
+      "type": "text",
+      "id": "state",
+      "label": "State",
+      "default": "ST"
+    },
+    {
+      "type": "text",
+      "id": "zip",
+      "label": "ZIP code",
+      "default": "12345"
+    },
+    {
+      "type": "header",
+      "content": "Contact Details"
+    },
+    {
+      "type": "text",
+      "id": "phone",
+      "label": "Phone",
+      "default": "(555) 123-4567"
+    },
+    {
+      "type": "text",
+      "id": "fax",
+      "label": "Fax"
+    },
+    {
+      "type": "text",
+      "id": "email",
+      "label": "Email"
+    },
+    {
+      "type": "header",
+      "content": "Map"
+    },
+    {
+      "type": "html",
+      "id": "map_embed",
+      "label": "Google Maps embed code",
+      "info": "Paste your Google Maps iframe embed code here"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "Section width",
+      "options": [
+        {
+          "value": "page-width",
+          "label": "Page width"
+        },
+        {
+          "value": "full-width",
+          "label": "Full width"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-2"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "header",
+      "content": "SEO"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_schema",
+      "label": "Enable Schema.org markup",
+      "info": "Adds structured data for search engines",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Contact Info + Map"
+    }
+  ]
+}
+{% endschema %}
