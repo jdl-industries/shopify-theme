@@ -345,11 +345,50 @@
           </tbody>
         </table>
       </div>
+      <div class="cart-po-number">
+        <label for="po-number" class="cart-po-number__label">Purchase Order Number</label>
+        <input
+          id="po-number"
+          type="text"
+          name="attributes[PO Number]"
+          value="{{ cart.attributes['PO Number'] }}"
+          placeholder="e.g. PO-12345"
+          class="cart-po-number__input"
+        >
+      </div>
     </form>
   {%- endif -%}
 </div>
 
 {% stylesheet %}
+  .cart-po-number {
+    margin-block: var(--margin-md);
+    padding-block-start: var(--padding-md);
+    border-block-start: 1px solid var(--color-border);
+  }
+
+  .cart-po-number__label {
+    display: block;
+    font-size: var(--cart-font-size--2xs);
+    font-weight: 500;
+    margin-block-end: var(--margin-2xs);
+  }
+
+  .cart-po-number__input {
+    color: var(--color-input-text);
+    background-color: var(--color-input-background);
+    border-width: var(--style-border-width-inputs);
+    border-color: var(--color-input-border);
+    border-style: solid;
+    border-radius: var(--style-border-radius-inputs);
+    font-size: var(--cart-font-size--sm);
+    padding: var(--padding-sm) var(--padding-md);
+    width: 100%;
+  }
+
+  .cart-po-number__input::placeholder {
+    color: rgb(var(--color-input-text-rgb) / var(--opacity-subdued-text));
+  }
   .cart-items {
     --cart-item-media-width-min: 2.5rem;
     --cart-item-media-width-max: 7.5rem;
