@@ -41,6 +41,7 @@
             "background": false,
             "background_color": "#00000026",
             "corner_radius": 0,
+            "scroll_animation": "none",
             "padding-block-start": 0,
             "padding-block-end": 0,
             "padding-inline-start": 0,
@@ -212,6 +213,7 @@
                     "background": false,
                     "background_color": "#00000026",
                     "corner_radius": 0,
+                    "scroll_animation": "none",
                     "padding-block-start": 0,
                     "padding-block-end": 0,
                     "padding-inline-start": 0,
@@ -244,6 +246,7 @@
                 "background": false,
                 "background_color": "#00000026",
                 "corner_radius": 0,
+                "scroll_animation": "none",
                 "padding-block-start": 0,
                 "padding-block-end": 0,
                 "padding-inline-start": 0,
@@ -279,7 +282,20 @@
                 "letter_spacing": "normal",
                 "case": "none",
                 "color": "var(--color-foreground)",
-                "padding-block-start": 4,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
+            },
+            "product_inventory_eR6ykB": {
+              "type": "product-inventory",
+              "name": "t:names.product_inventory",
+              "settings": {
+                "inventory_threshold": 10,
+                "show_inventory_quantity": true,
+                "padding-block-start": 0,
                 "padding-block-end": 0,
                 "padding-inline-start": 0,
                 "padding-inline-end": 0
@@ -340,6 +356,7 @@
             "text_aEtTtq",
             "variant_picker_R3rGDr",
             "price_aWYheQ",
+            "product_inventory_eR6ykB",
             "buy_buttons_eYQEYi",
             "product_specifications_jdl"
           ]
@@ -382,6 +399,7 @@
             "background": false,
             "background_color": "#00000026",
             "corner_radius": 0,
+            "scroll_animation": "none",
             "padding-block-start": 0,
             "padding-block-end": 0,
             "padding-inline-start": 0,
