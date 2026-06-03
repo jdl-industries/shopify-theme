@@ -25,6 +25,9 @@
   elsif collection != blank
     # Collection page: show collection name as final item (non-linked)
     assign current_title = collection.title
+    if collection.handle == "all"
+      assign current_title = "" 
+    endif
     assign current_url = collection.url
     assign is_current_linked = false
 
