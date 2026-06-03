@@ -1,0 +1,50 @@
+
+
+{% if product.metafields.custom.compare_at_indicates_surcharge.value == true %}
+  {%- liquid
+    assign surcharge = product.selected_or_first_available_variant.compare_at_price
+    assign base_price = product.selected_or_first_available_variant.price | minus: surcharge
+    assign surcharge_details_url = "https://cdn.shopify.com/s/files/1/0750/8767/5550/files/Hentzen_Announcement_-_Surcharge_MAY_11.pdf?v=1780498110"
+    if product.vendor == "Hentzen"
+      assign surcharge_details_url = "https://cdn.shopify.com/s/files/1/0750/8767/5550/files/Hentzen_Announcement_-_Surcharge_MAY_11.pdf?v=1780498110"
+    endif
+    assign surcharge = surcharge | money
+    assign base_price = base_price | money
+  -%}
+  <div class="surcharge">
+    <i>
+      <div>Price breakdown:</div>
+        <div><strong>{{ base_price }}</strong> product price</div>
+        <div><strong>{{ surcharge }}</strong> temporary manufacturer surcharge 
+        {% if surcharge_details_url %} 
+          <a href='{{ surcharge_details_url }}' target="_blank">
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              class="icon icon-caret"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              style="display: inline-block; vertical-align: middle; fill: currentColor; overflow: hidden;"
+            >
+              {%- render 'icon', icon: 'question_mark' -%}
+            </svg>
+          </a>
+        {% endif %}
+      </div>
+    </i>
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Price surcharge details",
+  "tag": null,
+  "presets": [
+    {
+      "name": "Price surcharge details",
+      "category": "t:categories.custom"
+    }
+  ]
+}
+{% endschema %}
