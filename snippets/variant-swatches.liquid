@@ -79,7 +79,7 @@
               endif
             %}
 
-            <li class="variant-option__swatch variant-option__swatch--with-label">
+            <li class="variant-option__swatch">
               <label
                 data-media-id="{{ featured_media.id }}"
                 class="variant-option__button-label variant-option__button-label--has-swatch swatch-rounded"
@@ -105,10 +105,10 @@
                 {% render 'swatch',
                   swatch: product_option_value.swatch,
                   variant_image: featured_media,
+                  label: product_option_value.name
                 %}
                 {% render 'strikethrough-variant', product_option: product_option_value %}
               </label>
-              <span class="variant-option__swatch-label">{{ product_option_value.name }}</span>
             </li>
           {%- endfor -%}
           <li
