@@ -71,6 +71,7 @@
               {% if product_option_value.size > longest_value and option_id_attribute %}
                 {% assign longest_value = product_option_value.size %}
               {% endif %}
+              {% if variant_style == 'swatch' %}<div class="variant-option__swatch-wrapper">{% endif %}
               <label
                 class="variant-option__button-label{% if variant_style == 'swatch' %} variant-option__button-label--has-swatch{% endif %}"
               >
@@ -131,6 +132,10 @@
                 {% endif %}
                 {% render 'strikethrough-variant', product_option: product_option_value %}
               </label>
+              {% if variant_style == 'swatch' %}
+                <span class="variant-option__swatch-label">{{ product_option_value.name }}</span>
+              </div>
+              {% endif %}
             {%- endfor -%}
             {% if option_id_attribute %}
               {% style %}
@@ -688,5 +693,23 @@
   .variant-picker--right .variant-option {
     text-align: right;
     justify-content: right;
+  }
+
+  .variant-option__swatch-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--gap-xs);
+  }
+
+  .variant-option__swatch-label {
+    font-size: var(--font-size--xs);
+    color: var(--color-foreground);
+    text-align: center;
+    line-height: 1.2;
+    max-width: calc(var(--variant-picker-swatch-width, 32px) + 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 {% endstylesheet %}

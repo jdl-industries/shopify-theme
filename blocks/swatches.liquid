@@ -96,6 +96,24 @@
   .hidden-swatches__count:hover {
     color: var(--color-foreground-rgb);
   }
+
+  .variant-option__swatch--with-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--gap-xs);
+  }
+
+  .variant-option__swatch-label {
+    font-size: var(--font-size--xs);
+    color: var(--color-foreground);
+    text-align: center;
+    line-height: 1.2;
+    max-width: calc(var(--variant-picker-swatch-width, 32px) + 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 {% endstylesheet %}
 
 {% schema %}
