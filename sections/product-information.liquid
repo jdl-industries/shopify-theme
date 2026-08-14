@@ -179,6 +179,7 @@
 <script>
   (function() {
     const baseProductTitle = {{ product.title | json }};
+    const initialVariant = {{ product.selected_or_first_available_variant | json }};
 
     function updateProductTitle(variant) {
       // Find the product title element - look for text-block with h3 class containing a p tag
@@ -186,7 +187,6 @@
         || document.querySelector('[data-product-title-text]');
 
       if (!titleElement) {
-        console.log('Title element not found');
         return;
       }
 
@@ -211,6 +211,9 @@
       const newTitle = baseProductTitle + ', ' + optionValues.join(', ');
       titleElement.textContent = newTitle;
     }
+
+    // Update title on page load with initial variant
+    updateProductTitle(initialVariant);
 
     // Listen for variant:update events
     document.addEventListener('variant:update', function(event) {
