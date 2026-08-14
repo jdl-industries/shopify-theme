@@ -176,6 +176,49 @@
   additional_blocks: additional_blocks
 %}
 
+<script>
+  (function() {
+    const baseProductTitle = {{ product.title | json }};
+
+    function updateProductTitle(variant) {
+      // Find the product title element - look for text-block with h3 class containing a p tag
+      const titleElement = document.querySelector('.text-block.h3 p')
+        || document.querySelector('[data-product-title-text]');
+
+      if (!titleElement) {
+        console.log('Title element not found');
+        return;
+      }
+
+      if (!variant) {
+        titleElement.textContent = baseProductTitle;
+        return;
+      }
+
+      // Get option values from variant
+      let optionValues = [];
+      if (variant.options && Array.isArray(variant.options)) {
+        optionValues = variant.options.filter(opt => opt && opt !== 'Default Title');
+      } else if (variant.title && variant.title !== 'Default Title') {
+        optionValues = variant.title.split(' / ');
+      }
+
+      if (optionValues.length === 0) {
+        titleElement.textContent = baseProductTitle;
+        return;
+      }
+
+      const newTitle = baseProductTitle + ', ' + optionValues.join(', ');
+      titleElement.textContent = newTitle;
+    }
+
+    // Listen for variant:update events
+    document.addEventListener('variant:update', function(event) {
+      updateProductTitle(event.detail?.resource);
+    });
+  })();
+</script>
+
 {% stylesheet %}
   .sticky-add-to-cart__bar {
     position: fixed;
