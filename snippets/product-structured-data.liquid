@@ -1,6 +1,16 @@
 {%- doc -%}
-  Enhanced Product JSON-LD Structured Data
-  Outputs comprehensive schema.org Product markup optimized for Google rich results.
+  Enhanced Product / ProductGroup JSON-LD Structured Data
+  Outputs schema.org markup optimized for Google rich results and technical
+  long-tail search (full MPN, NSN, FED-STD-595 color codes).
+
+  Emits `ProductGroup` with `hasVariant` when the product has more than one
+  variant, and a plain `Product` otherwise. This lets the single-product-per-color
+  catalog and the consolidated variant catalog coexist during migration.
+
+  Every spec field resolves in this order:
+    1. variant metafield  (consolidated / post-migration products)
+    2. product metafield  (legacy one-product-per-color entries)
+    3. variant option value, matched by option NAME not position
 
   @param {object} product - The product object (required)
 
@@ -23,32 +33,98 @@
   # Currency with fallback
   assign currency_code = cart.currency.iso_code | default: shop.currency | default: 'USD'
 
-  # Gather metafield values
-  assign sae_color = product.metafields.custom.sae_color.value
-  assign mfr_part_number = product.metafields.custom.manufacturer_part_number.value
-  assign nsn = product.metafields.custom.nsn.value
-  assign is_hazmat = product.metafields.custom.is_hazmat.value
-  assign certifications = product.metafields.custom.compliance_certifications.value
-
+  # Product-family-level metafields. These describe the whole line and stay on
+  # the parent regardless of how many variants hang off it.
   assign mil_specs = product.metafields.custom.mil_specs.value
-
   assign qpl_list = product.metafields.custom.qpl.value
+  assign certifications = product.metafields.custom.compliance_certifications.value
+  assign is_hazmat = product.metafields.custom.is_hazmat.value
 
-  # Build canonical URL
+  # Legacy product-level spec fields, used as fallbacks for catalog entries that
+  # have not been consolidated into variants yet.
+  assign product_sae_color = product.metafields.custom.sae_color.value
+  assign product_mpn = product.metafields.custom.manufacturer_part_number.value
+  assign product_nsn = product.metafields.custom.nsn.value
+
+  # Resolve option positions by NAME. Option order is not guaranteed to be
+  # consistent across products, so never index into options positionally.
+  assign color_option_index = -1
+  assign size_option_index = -1
+  for option in product.options_with_values
+    assign option_name = option.name | downcase
+    if option_name contains 'color' or option_name contains 'colour'
+      assign color_option_index = forloop.index0
+    elsif option_name contains 'size' or option_name contains 'volume' or option_name contains 'container' or option_name contains 'kit'
+      assign size_option_index = forloop.index0
+    endif
+  endfor
+
+  assign is_group = false
+  if product.variants.size > 1
+    assign is_group = true
+  endif
+
   assign canonical_url = product.url | prepend: request.origin
+  assign price_valid_until = 'now' | date: '%s' | plus: 2592000 | date: '%Y-%m-%d'
+  # The offer has been valid since the product went live. Omitted rather than
+  # guessed if published_at is unavailable (e.g. unpublished preview).
+  assign offer_valid_from = product.published_at | date: '%Y-%m-%d'
 -%}
+
+{%- comment -%}
+  Family-level additionalProperty entries. Every conditional entry carries a
+  trailing comma and the final Hazardous Material entry never does, which keeps
+  the array valid JSON without needing to trim a dangling separator.
+{%- endcomment -%}
+{%- capture family_additional_properties -%}
+  {%- if mil_specs != blank and mil_specs.size > 0 -%}
+    {%- for spec in mil_specs -%}
+      {
+        "@type":"PropertyValue",
+        "name":"Military Specification",
+        "value":{{ spec.long_name.value | json }},
+        "description": {{ spec.description.value | json }}
+      },
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- if qpl_list != blank and qpl_list.size > 0 -%}
+    {
+      "@type": "PropertyValue",
+      "name": "Certification Status",
+      "value": "QPL Certified",
+      "description": "This product is officially listed on the Qualified Products List (QPL) for aviation and defense applications."
+    },
+  {%- endif -%}
+
+  {%- comment -%} Compliance & OEM Certifications {%- endcomment -%}
+  {%- if certifications != blank -%}
+    {%- for cert in certifications -%}
+      {%- assign cert_trimmed = cert | strip -%}
+      {%- if cert_trimmed != blank -%}
+        {"@type":"PropertyValue","name":"OEM Certification","value":{{ cert_trimmed | json }}},
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {
+    "@type":"PropertyValue",
+    "name":"Hazardous Material",
+    "value":{% if is_hazmat %}"Yes"{% else %}"No"{% endif %}
+  }
+{%- endcapture -%}
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Product",
+  "@type": {% if is_group %}"ProductGroup"{% else %}"Product"{% endif %},
   "name": {{ product.title | json }},
   "url": {{ canonical_url | json }},
   "description": {{ product.description | strip_html | strip_newlines | truncate: 5000 | json }},
   {%- if product.images.size > 0 -%}
   "image": [
     {%- for image in product.images limit: 5 -%}
-      {{ image | image_url: width: 1200 | json }}{%- unless forloop.last -%},{%- endunless -%}
+      {{ image | image_url: width: 1200 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
     {%- endfor -%}
   ],
   {%- endif -%}
@@ -58,94 +134,289 @@
     "name": {{ product.vendor | json }}
   },
   {%- endif -%}
-  {%- if current_variant.sku != blank -%}
-  "sku": {{ current_variant.sku | json }},
-  {%- endif -%}
-  {%- if current_variant.barcode != blank -%}
-  "gtin": {{ current_variant.barcode | json }},
-  {%- endif -%}
-  {%- if mfr_part_number != blank -%}
-  "mpn": {{ mfr_part_number | json }},
-  {%- endif -%}
-  {%- if nsn != blank -%}
-  "productID": {{ nsn | json }},
-  {%- endif -%}
-  {%- if sae_color != blank -%}
-  "color": {{ sae_color | json }},
-  {%- endif -%}
-  "additionalProperty": [
-    {%- if nsn != blank -%}
-      {
-        "@type":"PropertyValue",
-        "name":"National Stock Number (NSN)",
-        "value":{{ nsn | json }}
-      },
-    {%- endif -%}
 
-    {%- if mil_specs != blank and mil_specs.size > 0 -%}
-      {%- for spec in mil_specs -%}
+  {%- if is_group -%}
+    {%- comment -%}
+      ProductGroup: identity lives on the child variants. productGroupID plus
+      variesBy tells Google these are variants of one item rather than duplicates.
+    {%- endcomment -%}
+    "productGroupID": {{ product.id | json }},
+    {%- if product.metafields.custom.base_model_number.value != blank -%}
+    "mpn": {{ product.metafields.custom.base_model_number.value | json }},
+    {%- elsif product_mpn != blank -%}
+    "mpn": {{ product_mpn | json }},
+    {%- endif -%}
+    {%- if color_option_index >= 0 or size_option_index >= 0 -%}
+    "variesBy": [
+      {%- if color_option_index >= 0 -%}"https://schema.org/color"{%- endif -%}
+      {%- if color_option_index >= 0 and size_option_index >= 0 -%},{%- endif -%}
+      {%- if size_option_index >= 0 -%}"https://schema.org/size"{%- endif -%}
+    ],
+    {%- endif -%}
+    "additionalProperty": [
+      {{- family_additional_properties -}}
+    ],
+    "hasVariant": [
+      {%- for variant in product.variants -%}
+        {%- liquid
+          # Never fall back to SKU here. SKU is a JDL-internal identifier and mpn
+          # must be the manufacturer's part number, or absent.
+          assign v_mpn = variant.metafields.custom.full_mpn.value | default: product_mpn
+          assign v_nsn = variant.metafields.custom.nsn.value | default: product_nsn
+
+          assign v_color = variant.metafields.custom.sae_color.value
+          if v_color == blank and color_option_index >= 0
+            assign v_color = variant.options[color_option_index]
+          endif
+          if v_color == blank
+            assign v_color = product_sae_color
+          endif
+
+          assign v_size = variant.metafields.custom.size.value
+          if v_size == blank and size_option_index >= 0
+            assign v_size = variant.options[size_option_index]
+          endif
+
+          # FED-STD-595 code and color name. Prefer explicit metafields. Fall
+          # back to a deliberately conservative parse of the "NNNNN (Name)"
+          # display string: the code must be exactly five digits or the whole
+          # string is left alone. Mis-splitting real part data is worse than
+          # emitting no codified value at all.
+          assign v_fed_std = variant.metafields.custom.fed_std_595.value
+          assign v_color_name = variant.metafields.custom.color_name.value
+          if v_fed_std == blank and v_color != blank
+            assign color_parts = v_color | split: ' ('
+            if color_parts.size == 2
+              assign code_candidate = color_parts[0] | strip
+              assign non_digits = code_candidate | replace: '0', '' | replace: '1', '' | replace: '2', '' | replace: '3', '' | replace: '4', '' | replace: '5', '' | replace: '6', '' | replace: '7', '' | replace: '8', '' | replace: '9', ''
+              if non_digits == blank and code_candidate.size == 5
+                assign v_fed_std = code_candidate
+                if v_color_name == blank
+                  assign v_color_name = color_parts[1] | split: ')' | first | strip
+                endif
+              endif
+            endif
+          endif
+
+          # Google requires image on every hasVariant child. Most color variants
+          # share the family photography, so fall back to the product image
+          # rather than dropping the field.
+          assign v_image = variant.image
+          if v_image == blank
+            assign v_image = product.featured_image
+          endif
+          if v_image == blank
+            assign v_image = product.images.first
+          endif
+
+          # inventory_policy 'continue' means we keep selling past zero, i.e. we
+          # will fulfill on a lead time. That is BackOrder, not OutOfStock.
+          if variant.available
+            assign v_availability = 'https://schema.org/InStock'
+          elsif variant.inventory_policy == 'continue'
+            assign v_availability = 'https://schema.org/BackOrder'
+          else
+            assign v_availability = 'https://schema.org/OutOfStock'
+          endif
+        -%}
+        {%- capture v_name -%}
+          {{- product.title -}}
+          {%- if v_color != blank %} - {{ v_color }}{% endif -%}
+          {%- if v_size != blank %} ({{ v_size }}){% endif -%}
+        {%- endcapture -%}
+        {%- comment -%}
+          Variant-specific description. Leads with the identifiers MRO buyers
+          actually search (color code, MPN, NSN) before the family copy.
+        {%- endcomment -%}
+        {%- capture v_description -%}
+          {{- product.title -}}
+          {%- if v_color != blank %} in {{ v_color }}{% endif -%}
+          {%- if v_size != blank %}, {{ v_size }}{% endif -%}
+          {%- if v_mpn != blank %}. Manufacturer part number {{ v_mpn }}{% endif -%}
+          {%- if v_nsn != blank %}. NSN {{ v_nsn }}{% endif -%}
+          . {{ product.description | strip_html | strip_newlines | truncatewords: 40 -}}
+        {%- endcapture -%}
+        {%- comment -%}
+          Variant-level codified properties. None is guaranteed present, so the
+          separator is tracked explicitly rather than relying on a trailing
+          comma plus a always-present final entry.
+        {%- endcomment -%}
+        {%- assign has_v_prop = false -%}
+        {%- capture v_props -%}
+          {%- if v_nsn != blank -%}
+            {"@type":"PropertyValue","propertyID":"NSN","name":"National Stock Number (NSN)","value":{{ v_nsn | json }}}
+            {%- assign has_v_prop = true -%}
+          {%- endif -%}
+          {%- if v_fed_std != blank -%}
+            {%- if has_v_prop %},{% endif -%}
+            {"@type":"PropertyValue","propertyID":"FED-STD-595C","name":"FED-STD-595 Color Number","value":{{ v_fed_std | json }}}
+            {%- assign has_v_prop = true -%}
+          {%- endif -%}
+          {%- if v_color_name != blank -%}
+            {%- if has_v_prop %},{% endif -%}
+            {"@type":"PropertyValue","name":"Color Name","value":{{ v_color_name | json }}}
+            {%- assign has_v_prop = true -%}
+          {%- endif -%}
+        {%- endcapture -%}
         {
-          "@type":"PropertyValue",
-          "name":"Military Specification",
-          "value":{{ spec.long_name.value | json }},
-          "description": {{ spec.description.value | json }}
-        },
+          "@type": "Product",
+          "name": {{ v_name | strip | json }},
+          "description": {{ v_description | strip | json }},
+          "inProductGroupWithID": {{ product.id | json }},
+          {%- if variant.sku != blank -%}
+          "sku": {{ variant.sku | json }},
+          {%- endif -%}
+          {%- if v_mpn != blank -%}
+          "mpn": {{ v_mpn | json }},
+          {%- endif -%}
+          {%- if variant.barcode != blank -%}
+          "gtin": {{ variant.barcode | json }},
+          {%- endif -%}
+          {%- if v_nsn != blank -%}
+          "productID": {{ v_nsn | json }},
+          {%- endif -%}
+          {%- if has_v_prop -%}
+          "additionalProperty": [{{ v_props }}],
+          {%- endif -%}
+          {%- if v_color != blank -%}
+          "color": {{ v_color | json }},
+          {%- endif -%}
+          {%- if v_size != blank -%}
+          "size": {{ v_size | json }},
+          {%- endif -%}
+          {%- if v_image != blank -%}
+          "image": {{ v_image | image_url: width: 1200 | prepend: 'https:' | json }},
+          {%- endif -%}
+          "url": {{ variant.url | prepend: request.origin | json }},
+          "offers": {
+            "@type": "Offer",
+            "url": {{ variant.url | prepend: request.origin | json }},
+            "priceCurrency": {{ currency_code | json }},
+            "price": {{ variant.price | default: 0 | divided_by: 100.0 }},
+            "availability": {{ v_availability | json }},
+            "itemCondition": "https://schema.org/NewCondition",
+            "priceValidUntil": {{ price_valid_until | json }}
+            {%- if offer_valid_from != blank -%}
+            ,"validFrom": {{ offer_valid_from | json }}
+            {%- endif -%}
+            {%- if shop.name != blank -%}
+            ,"seller": {
+              "@type": "Organization",
+              "name": {{ shop.name | json }}
+            }
+            {%- endif -%}
+          }
+        }{% unless forloop.last %},{% endunless %}
       {%- endfor -%}
-    {%- endif -%}
+    ]
+  {%- else -%}
+    {%- comment -%}
+      Single-variant product: legacy one-product-per-color shape. Spec data
+      still resolves variant-first so a converted single-variant product works.
+    {%- endcomment -%}
+    {%- liquid
+      assign v_mpn = current_variant.metafields.custom.full_mpn.value | default: product_mpn
+      assign v_nsn = current_variant.metafields.custom.nsn.value | default: product_nsn
 
-    {%- if qpl_list != blank and qpl_list.size > 0 -%}
-      {
-        "@type": "PropertyValue",
-        "name": "Certification Status",
-        "value": "QPL Certified",
-        "description": "This product is officially listed on the Qualified Products List (QPL) for aviation and defense applications."
-      },
-    {%- endif -%}
+      assign v_color = current_variant.metafields.custom.sae_color.value
+      if v_color == blank and color_option_index >= 0
+        assign v_color = current_variant.options[color_option_index]
+      endif
+      if v_color == blank
+        assign v_color = product_sae_color
+      endif
 
-    {%- comment -%} Compliance & OEM Certifications {%- endcomment -%}
-    {%- if certifications != blank -%}
-      {%- for cert in certifications -%}
-        {%- assign cert_trimmed = cert | strip -%}
-        {%- if cert_trimmed != blank -%}
-          {"@type":"PropertyValue","name":"OEM Certification","value":{{ cert_trimmed | json }}},
-        {%- endif -%}
-      {%- endfor -%}
-    {%- endif -%}
+      # Same conservative FED-STD-595 resolution as the variant branch above.
+      assign v_fed_std = current_variant.metafields.custom.fed_std_595.value | default: product.metafields.custom.fed_std_595.value
+      assign v_color_name = current_variant.metafields.custom.color_name.value | default: product.metafields.custom.color_name.value
+      if v_fed_std == blank and v_color != blank
+        assign color_parts = v_color | split: ' ('
+        if color_parts.size == 2
+          assign code_candidate = color_parts[0] | strip
+          assign non_digits = code_candidate | replace: '0', '' | replace: '1', '' | replace: '2', '' | replace: '3', '' | replace: '4', '' | replace: '5', '' | replace: '6', '' | replace: '7', '' | replace: '8', '' | replace: '9', ''
+          if non_digits == blank and code_candidate.size == 5
+            assign v_fed_std = code_candidate
+            if v_color_name == blank
+              assign v_color_name = color_parts[1] | split: ')' | first | strip
+            endif
+          endif
+        endif
+      endif
 
-    {
-      "@type":"PropertyValue",
-      "name":"Hazardous Material",
-      "value":{% if is_hazmat %}"Yes"{% else %}"No"{% endif %}
-    }
-  ],
-
-  "offers": {
-    {%- if product.variants.size > 1 -%}
-    "@type": "AggregateOffer",
-    "url": {{ canonical_url | json }},
-    "priceCurrency": {{ currency_code | json }},
-    "lowPrice": {{ product.price_min | default: 0 | divided_by: 100.0 }},
-    "highPrice": {{ product.price_max | default: 0 | divided_by: 100.0 }},
-    "offerCount": {{ product.variants.size }},
-    "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}"
-    {%- else -%}
-    "@type": "Offer",
-    "url": {{ canonical_url | json }},
-    "priceCurrency": {{ currency_code | json }},
-    "price": {{ current_variant.price | default: 0 | divided_by: 100.0 }},
-    "availability": "https://schema.org/{% if current_variant.available %}InStock{% else %}OutOfStock{% endif %}",
+      if current_variant.available
+        assign v_availability = 'https://schema.org/InStock'
+      elsif current_variant.inventory_policy == 'continue'
+        assign v_availability = 'https://schema.org/BackOrder'
+      else
+        assign v_availability = 'https://schema.org/OutOfStock'
+      endif
+    -%}
     {%- if current_variant.sku != blank -%}
     "sku": {{ current_variant.sku | json }},
     {%- endif -%}
+    {%- if current_variant.barcode != blank -%}
+    "gtin": {{ current_variant.barcode | json }},
     {%- endif -%}
-    "itemCondition": "https://schema.org/NewCondition",
-    "priceValidUntil": "{{ 'now' | date: '%s' | plus: 2592000 | date: '%Y-%m-%d' }}",
-    {%- if shop.name != blank -%}
-    "seller": {
-      "@type": "Organization",
-      "name": {{ shop.name | json }}
+    {%- if v_mpn != blank -%}
+    "mpn": {{ v_mpn | json }},
+    {%- endif -%}
+    {%- if v_nsn != blank -%}
+    "productID": {{ v_nsn | json }},
+    {%- endif -%}
+    {%- if v_color != blank -%}
+    "color": {{ v_color | json }},
+    {%- endif -%}
+    "additionalProperty": [
+      {%- comment -%}
+        These carry trailing commas because family_additional_properties always
+        ends with an unconditional Hazardous Material entry.
+      {%- endcomment -%}
+      {%- if v_nsn != blank -%}
+        {
+          "@type":"PropertyValue",
+          "propertyID":"NSN",
+          "name":"National Stock Number (NSN)",
+          "value":{{ v_nsn | json }}
+        },
+      {%- endif -%}
+      {%- if v_fed_std != blank -%}
+        {
+          "@type":"PropertyValue",
+          "propertyID":"FED-STD-595C",
+          "name":"FED-STD-595 Color Number",
+          "value":{{ v_fed_std | json }}
+        },
+      {%- endif -%}
+      {%- if v_color_name != blank -%}
+        {
+          "@type":"PropertyValue",
+          "name":"Color Name",
+          "value":{{ v_color_name | json }}
+        },
+      {%- endif -%}
+      {{- family_additional_properties -}}
+    ],
+    "offers": {
+      "@type": "Offer",
+      "url": {{ canonical_url | json }},
+      "priceCurrency": {{ currency_code | json }},
+      "price": {{ current_variant.price | default: 0 | divided_by: 100.0 }},
+      "availability": {{ v_availability | json }},
+      "itemCondition": "https://schema.org/NewCondition",
+      "priceValidUntil": {{ price_valid_until | json }}
+      {%- if offer_valid_from != blank -%}
+      ,"validFrom": {{ offer_valid_from | json }}
+      {%- endif -%}
+      {%- if current_variant.sku != blank -%}
+      ,"sku": {{ current_variant.sku | json }}
+      {%- endif -%}
+      {%- if shop.name != blank -%}
+      ,"seller": {
+        "@type": "Organization",
+        "name": {{ shop.name | json }}
+      }
+      {%- endif -%}
     }
-    {%- endif -%}
-  }
+  {%- endif -%}
 }
 </script>
