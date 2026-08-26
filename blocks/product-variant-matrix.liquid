@@ -1,0 +1,494 @@
+{%- doc -%}
+  Product Variant Specification Matrix
+
+  Renders a fully server-rendered ordering table with one row per variant,
+  exposing full MPN, FED-STD-595 color, container size, SKU, NSN and
+  availability as crawlable text.
+
+  This exists so that consolidating one-product-per-color into variants does
+  not lose long-tail coverage for hyper-specific part-number searches. The
+  variant dropdown is JavaScript-driven and its option values are not reliably
+  indexed; this table is in the initial HTML response, so it is.
+
+  Every row is a real link to that variant's deep link, which also gives
+  crawlers a path to each variant URL.
+
+  Field resolution matches snippets/product-structured-data.liquid:
+    1. variant metafield  (consolidated / post-migration products)
+    2. product metafield  (legacy one-product-per-color entries)
+    3. variant option value, matched by option NAME not position
+
+  Metafields used:
+  - variant custom.full_mpn, custom.nsn, custom.sae_color, custom.size
+  - product custom.manufacturer_part_number, custom.nsn, custom.sae_color,
+    custom.lead_time
+
+  Renders nothing for single-variant products, where a one-row table adds no value.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign current_variant = product.selected_or_first_available_variant
+
+  # Legacy product-level fallbacks
+  assign product_sae_color = product.metafields.custom.sae_color.value
+  assign product_mpn = product.metafields.custom.manufacturer_part_number.value
+  assign product_nsn = product.metafields.custom.nsn.value
+  assign lead_time = product.metafields.custom.lead_time.value
+
+  # Resolve option positions by NAME. Option order is not consistent across
+  # products, so never index positionally.
+  assign color_option_index = -1
+  assign size_option_index = -1
+  for option in product.options_with_values
+    assign option_name = option.name | downcase
+    if option_name contains 'color' or option_name contains 'colour'
+      assign color_option_index = forloop.index0
+    elsif option_name contains 'size' or option_name contains 'volume' or option_name contains 'container' or option_name contains 'kit'
+      assign size_option_index = forloop.index0
+    endif
+  endfor
+
+  # Detection pass: only render a column when at least one variant populates it,
+  # otherwise a family with no NSNs gets a column of empty cells.
+  assign has_mpn = false
+  assign has_nsn = false
+  assign has_sku = false
+  if product_mpn != blank
+    assign has_mpn = true
+  endif
+  if product_nsn != blank
+    assign has_nsn = true
+  endif
+  for variant in product.variants
+    if variant.metafields.custom.full_mpn.value != blank
+      assign has_mpn = true
+    endif
+    if variant.metafields.custom.nsn.value != blank
+      assign has_nsn = true
+    endif
+    if variant.sku != blank
+      assign has_sku = true
+    endif
+  endfor
+
+  assign has_color = false
+  if color_option_index >= 0 or product_sae_color != blank
+    assign has_color = true
+  endif
+  assign has_size = false
+  if size_option_index >= 0
+    assign has_size = true
+  endif
+-%}
+
+{%- if product != blank and product.variants.size > 1 -%}
+  <div
+    class="variant-matrix variant-matrix--{{ block.id }} spacing-style"
+    style="{% render 'spacing-style', settings: block.settings %}"
+    {{ block.shopify_attributes }}
+  >
+    {%- if block.settings.heading != blank -%}
+      <h2 class="variant-matrix__heading">{{ block.settings.heading }}</h2>
+    {%- endif -%}
+
+    {%- if block.settings.intro != blank -%}
+      <p class="variant-matrix__intro">{{ block.settings.intro }}</p>
+    {%- endif -%}
+
+    {%- comment -%}
+      tabindex + role make the horizontally scrollable region reachable by
+      keyboard, which a bare overflow container is not.
+    {%- endcomment -%}
+    <div
+      class="variant-matrix__scroll"
+      tabindex="0"
+      role="region"
+      aria-label="{{ block.settings.heading | default: 'Part number matrix' | escape }}"
+    >
+      <table class="variant-matrix__table">
+        <caption class="variant-matrix__caption">
+          {{ product.variants.size }} configurations available for {{ product.title | escape }}
+        </caption>
+        <thead>
+          <tr>
+            {%- if has_mpn -%}
+              <th scope="col">Manufacturer Part #</th>
+            {%- endif -%}
+            {%- if has_color -%}
+              <th scope="col">FED-STD-595 / Color</th>
+            {%- endif -%}
+            {%- if has_size -%}
+              <th scope="col">Size</th>
+            {%- endif -%}
+            {%- if has_sku -%}
+              <th scope="col">SKU</th>
+            {%- endif -%}
+            {%- if has_nsn -%}
+              <th scope="col"><abbr title="National Stock Number">NSN</abbr></th>
+            {%- endif -%}
+            <th scope="col">Availability</th>
+            {%- if block.settings.show_select_column -%}
+              <th scope="col"><span class="visually-hidden">Select variant</span></th>
+            {%- endif -%}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for variant in product.variants -%}
+            {%- liquid
+              assign row_mpn = variant.metafields.custom.full_mpn.value | default: product_mpn
+
+              assign row_nsn = variant.metafields.custom.nsn.value | default: product_nsn
+
+              assign row_color = variant.metafields.custom.sae_color.value
+              if row_color == blank and color_option_index >= 0
+                assign row_color = variant.options[color_option_index]
+              endif
+              if row_color == blank
+                assign row_color = product_sae_color
+              endif
+
+              assign row_size = variant.metafields.custom.size.value
+              if row_size == blank and size_option_index >= 0
+                assign row_size = variant.options[size_option_index]
+              endif
+
+              assign is_active = false
+              if variant.id == current_variant.id
+                assign is_active = true
+              endif
+            -%}
+            <tr
+              id="variant-row-{{ variant.id }}"
+              class="variant-matrix__row{% if is_active %} variant-matrix__row--active{% endif %}"
+              {% if is_active %}
+                aria-current="true"
+              {% endif %}
+            >
+              {%- if has_mpn -%}
+                <td class="variant-matrix__cell variant-matrix__cell--mpn">
+                  {%- if row_mpn != blank -%}
+                    <strong>{{ row_mpn | escape }}</strong>
+                  {%- else -%}
+                    <span class="variant-matrix__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- if has_color -%}
+                <td class="variant-matrix__cell">
+                  {%- if row_color != blank -%}
+                    {{ row_color | escape }}
+                  {%- else -%}
+                    <span class="variant-matrix__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- if has_size -%}
+                <td class="variant-matrix__cell">
+                  {%- if row_size != blank -%}
+                    {{ row_size | escape }}
+                  {%- else -%}
+                    <span class="variant-matrix__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- if has_sku -%}
+                <td class="variant-matrix__cell variant-matrix__cell--mono">
+                  {%- if variant.sku != blank -%}
+                    {{ variant.sku | escape }}
+                  {%- else -%}
+                    <span class="variant-matrix__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- if has_nsn -%}
+                <td class="variant-matrix__cell variant-matrix__cell--mono">
+                  {%- if row_nsn != blank -%}
+                    {{ row_nsn | escape }}
+                  {%- else -%}
+                    <span class="variant-matrix__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- comment -%}
+                Availability wording mirrors the JSON-LD availability mapping in
+                product-structured-data.liquid: inventory_policy 'continue'
+                means we keep selling past zero and fulfill on a lead time.
+              {%- endcomment -%}
+              <td class="variant-matrix__cell">
+                {%- if variant.available -%}
+                  <span class="variant-matrix__status variant-matrix__status--in">In stock</span>
+                {%- elsif variant.inventory_policy == 'continue' -%}
+                  <span class="variant-matrix__status variant-matrix__status--lead">
+                    {%- if lead_time != blank -%}
+                      Lead time: {{ lead_time | escape }}
+                    {%- else -%}
+                      Available on lead time
+                    {%- endif -%}
+                  </span>
+                {%- else -%}
+                  <span class="variant-matrix__status variant-matrix__status--out">Out of stock</span>
+                {%- endif -%}
+              </td>
+
+              {%- if block.settings.show_select_column -%}
+                <td class="variant-matrix__cell variant-matrix__cell--action">
+                  {%- if is_active -%}
+                    <span class="variant-matrix__selected">Selected</span>
+                  {%- else -%}
+                    <a
+                      class="variant-matrix__select"
+                      href="{{ variant.url }}"
+                    >
+                      Select<span class="visually-hidden">
+                        {{- ' ' }}{{ variant.title | escape -}}
+                      </span>
+                    </a>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+            </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .variant-matrix {
+    width: 100%;
+    margin-block-start: var(--margin-lg);
+  }
+
+  .variant-matrix__heading {
+    font-family: var(--font-heading--family);
+    font-size: var(--font-size--lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-foreground-heading);
+    margin: 0 0 var(--margin-sm) 0;
+    padding-block-end: var(--padding-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .variant-matrix__intro {
+    font-size: var(--font-size--sm);
+    color: var(--color-foreground-secondary);
+    margin: 0 0 var(--margin-md) 0;
+  }
+
+  /* Dense spec tables are legitimately wide. Scroll the table, never the page. */
+  .variant-matrix__scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+  }
+
+  .variant-matrix__scroll:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .variant-matrix__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size--sm);
+    font-family: var(--font-body--family);
+  }
+
+  .variant-matrix__caption {
+    text-align: left;
+    padding: var(--padding-sm) var(--padding-md);
+    font-size: var(--font-size--xs);
+    color: var(--color-foreground-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .variant-matrix__table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: left;
+    white-space: nowrap;
+    padding: var(--padding-sm) var(--padding-md);
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-foreground-secondary);
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .variant-matrix__table thead th abbr {
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+  }
+
+  .variant-matrix__cell {
+    padding: var(--padding-sm) var(--padding-md);
+    border-bottom: 1px solid rgb(var(--color-foreground-rgb) / 0.08);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .variant-matrix__row:last-child .variant-matrix__cell {
+    border-bottom: none;
+  }
+
+  .variant-matrix__row:hover {
+    background: rgb(var(--color-foreground-rgb) / 0.03);
+  }
+
+  .variant-matrix__row--active {
+    background: rgb(var(--color-foreground-rgb) / 0.06);
+  }
+
+  .variant-matrix__cell--mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .variant-matrix__empty {
+    color: var(--color-foreground-secondary);
+    opacity: 0.6;
+  }
+
+  .variant-matrix__status {
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .variant-matrix__status--in {
+    color: rgb(21 128 61);
+  }
+
+  .variant-matrix__status--lead {
+    color: rgb(180 83 9);
+  }
+
+  .variant-matrix__status--out {
+    color: var(--color-foreground-secondary);
+  }
+
+  .variant-matrix__cell--action {
+    text-align: right;
+  }
+
+  .variant-matrix__select {
+    display: inline-block;
+    padding: var(--padding-2xs) var(--padding-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-foreground);
+    text-decoration: none;
+  }
+
+  .variant-matrix__select:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .variant-matrix__selected {
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-foreground-secondary);
+  }
+
+  @media screen and (max-width: 749px) {
+    .variant-matrix__cell,
+    .variant-matrix__table thead th {
+      padding: var(--padding-xs) var(--padding-sm);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Variant Spec Matrix",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Complete Part Numbers & Ordering Matrix"
+    },
+    {
+      "type": "text",
+      "id": "intro",
+      "label": "Intro text",
+      "info": "Optional line shown above the table."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_select_column",
+      "label": "Show select column",
+      "info": "Adds a link per row to that variant. Also gives crawlers a path to each variant URL.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Variant Spec Matrix",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}
