@@ -159,9 +159,11 @@
     "hasVariant": [
       {%- for variant in product.variants -%}
         {%- liquid
-          # Never fall back to SKU here. SKU is a JDL-internal identifier and mpn
-          # must be the manufacturer's part number, or absent.
-          assign v_mpn = variant.metafields.custom.full_mpn.value | default: product_mpn
+          # product_mpn is the FAMILY part number and must never be used here.
+          # Falling back to it publishes an identical mpn on every variant,
+          # which is false data, not merely missing data. An absent mpn is the
+          # correct output when the variant metafield is unpopulated.
+          assign v_mpn = variant.metafields.custom.full_mpn.value
           assign v_nsn = variant.metafields.custom.nsn.value | default: product_nsn
 
           assign v_color = variant.metafields.custom.sae_color.value

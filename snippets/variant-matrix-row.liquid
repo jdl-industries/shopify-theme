@@ -1,0 +1,143 @@
+{%- doc -%}
+  Variant Matrix Row
+
+  Renders a single <tr> for blocks/product-variant-matrix.liquid: one color
+  group, with every matching variant's part number listed inside the row.
+
+  Grouping by color keeps the table at one row per color instead of one row per
+  color-size combination, while still emitting every full MPN as literal
+  crawlable text and linking each one to its own variant deep link.
+
+  @param {object} product - The product object (required)
+  @param {string} group_label - Text for the first cell (the color)
+  @param {string} filter_color - Only include variants matching this color. Blank includes all.
+  @param {number} color_option_index - Position of the color option, or -1
+  @param {number} size_option_index - Position of the size option, or -1
+  @param {string} product_mpn - Product-level MPN fallback
+  @param {string} product_nsn - Product-level NSN fallback
+  @param {string} lead_time - Product-level lead time text
+  @param {number} current_variant_id - Currently selected variant, for highlighting
+  @param {boolean} show_select - Whether the row links to variant deep links
+{%- enddoc -%}
+
+{%- liquid
+  assign is_active_group = false
+  assign match_count = 0
+-%}
+
+{%- comment -%} First pass purely to decide whether this group is the active one. {%- endcomment -%}
+{%- for variant in product.variants -%}
+  {%- liquid
+    assign row_color = variant.metafields.custom.sae_color.value
+    if row_color == blank and color_option_index >= 0
+      assign row_color = variant.options[color_option_index]
+    endif
+
+    assign include = false
+    if filter_color == blank or row_color == filter_color
+      assign include = true
+    endif
+
+    if include
+      assign match_count = match_count | plus: 1
+      if variant.id == current_variant_id
+        assign is_active_group = true
+      endif
+    endif
+  -%}
+{%- endfor -%}
+
+{%- if match_count > 0 -%}
+  <tr
+    class="variant-matrix__row{% if is_active_group %} variant-matrix__row--active{% endif %}"
+    {% if is_active_group %}
+      aria-current="true"
+    {% endif %}
+  >
+    <th scope="row" class="variant-matrix__cell variant-matrix__cell--color">
+      {{ group_label | escape }}
+    </th>
+    <td class="variant-matrix__cell variant-matrix__cell--parts">
+      <ul class="variant-matrix__parts">
+        {%- for variant in product.variants -%}
+          {%- liquid
+            assign row_color = variant.metafields.custom.sae_color.value
+            if row_color == blank and color_option_index >= 0
+              assign row_color = variant.options[color_option_index]
+            endif
+
+            assign include = false
+            if filter_color == blank or row_color == filter_color
+              assign include = true
+            endif
+
+            # Deliberately does NOT fall back to the product-level MPN: that is
+            # the family number, and using it per-row prints one identical part
+            # number against every color. SKU is per-variant, so it is the right
+            # display fallback here even though it is not schema-grade `mpn`.
+            assign row_mpn = variant.metafields.custom.full_mpn.value
+            if row_mpn == blank
+              assign row_mpn = variant.sku
+            endif
+
+            assign row_nsn = variant.metafields.custom.nsn.value | default: product_nsn
+
+            assign row_size = variant.metafields.custom.size.value
+            if row_size == blank and size_option_index >= 0
+              assign row_size = variant.options[size_option_index]
+            endif
+
+            # Never show a row with no identifier at all. If the MPN metafield
+            # is not populated yet, fall back to the variant title for display
+            # only. This is display text, not the schema `mpn` field, so a SKU
+            # or option label here does not misrepresent a manufacturer number.
+            assign label = row_mpn
+            if label == blank
+              assign label = variant.title
+            endif
+          -%}
+          {%- if include -%}
+            <li class="variant-matrix__part{% if variant.id == current_variant_id %} variant-matrix__part--active{% endif %}">
+              {%- if show_select -%}
+                <a class="variant-matrix__part-mpn" href="{{ variant.url }}">{{ label | escape }}</a>
+              {%- else -%}
+                <span class="variant-matrix__part-mpn">{{ label | escape }}</span>
+              {%- endif -%}
+
+              {%- if row_size != blank -%}
+                <span class="variant-matrix__part-size">{{ row_size | escape }}</span>
+              {%- endif -%}
+
+              {%- if row_nsn != blank -%}
+                <span class="variant-matrix__part-nsn">
+                  <abbr title="National Stock Number">NSN</abbr>
+                  {{ row_nsn | escape }}
+                </span>
+              {%- endif -%}
+
+              {%- comment -%}
+                Status is emitted only when something is NOT in stock. An
+                all-available family shows no markers at all, which is the
+                whole point of not carrying a column of "In stock" repeated
+                forty times. Wording mirrors the JSON-LD availability mapping.
+              {%- endcomment -%}
+              {%- unless variant.available -%}
+                {%- if variant.inventory_policy == 'continue' -%}
+                  <span class="variant-matrix__status variant-matrix__status--lead">
+                    {%- if lead_time != blank -%}
+                      Lead time: {{ lead_time | escape }}
+                    {%- else -%}
+                      Lead time
+                    {%- endif -%}
+                  </span>
+                {%- else -%}
+                  <span class="variant-matrix__status variant-matrix__status--out">Out of stock</span>
+                {%- endif -%}
+              {%- endunless -%}
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </td>
+  </tr>
+{%- endif -%}
