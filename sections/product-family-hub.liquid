@@ -1,0 +1,525 @@
+{%- comment -%}
+  Product Family Hub
+
+  Renders the family-level content and ProductGroup JSON-LD for a collection
+  that represents one product family (one chemical line, colours as members).
+
+  This is the counterpart to the isVariantOf emitted by each child product in
+  snippets/product-structured-data.liquid: children point at a ProductGroup
+  identified by the family collection handle, and this section is what actually
+  declares that group.
+
+  Resolution path:
+    collection -> custom.product_family (metaobject) -> custom.name
+
+  Child links are not duplicated here — the main-collection section in the
+  template already renders a card and link per child, so crawl paths exist.
+
+  Intended for templates/collection.product-family.json.
+{%- endcomment -%}
+
+{%- liquid
+  assign family = collection.metafields.custom.product_family.value
+  assign family_name = family.name.value | default: collection.title
+  assign family_group_id = collection.handle
+  assign family_url = collection.url | prepend: request.origin
+  # Family-level specs. Prefer the collection's own metafields; fall back to a
+  # representative child, since every colour in a line shares the same
+  # chemistry, approvals and hazard class.
+  assign spec_source = collection
+  if collection.metafields.custom.mil_specs.value == blank and collection.metafields.custom.qpl.value == blank
+    assign spec_source = collection.products.first
+  endif
+
+  assign currency_code = cart.currency.iso_code | default: shop.currency | default: 'USD'
+  assign price_valid_until = 'now' | date: '%s' | plus: 2592000 | date: '%Y-%m-%d'
+
+  # variesBy must describe every axis actually present across the family.
+  assign family_varies_by_size = false
+  for child in collection.products
+    if child.variants.size > 1
+      assign family_varies_by_size = true
+    endif
+  endfor
+-%}
+
+{%- if collection.products_count > 0 -%}
+  {%- if section.settings.show_heading -%}
+    <div class="section-background color-{{ section.settings.color_scheme }}"></div>
+    <div
+      class="section section--{{ section.settings.section_width }} color-{{ section.settings.color_scheme }} spacing-style family-hub"
+      style="{% render 'spacing-style', settings: section.settings %}"
+    >
+      <div class="family-hub__inner">
+        <h1 class="family-hub__title">{{ family_name | escape }}</h1>
+
+        {%- comment -%}
+          Mirrors the product page: media on one side, details on the other,
+          with the divider above the description. The product page's
+          _product-media-gallery and _product-details are private blocks scoped
+          to product-information, so the grid is rebuilt here rather than reused.
+        {%- endcomment -%}
+        <div class="family-hub__grid family-hub__grid--media-{{ section.settings.media_position }}">
+          {%- if collection.image -%}
+            <div class="family-hub__media">
+              {{
+                collection.image
+                | image_url: width: 1400
+                | image_tag:
+                  widths: '400, 700, 1000, 1400',
+                  sizes: '(min-width: 750px) 50vw, 100vw',
+                  class: 'family-hub__image',
+                  loading: 'eager'
+              }}
+            </div>
+          {%- endif -%}
+
+          <div class="family-hub__details">
+            {%- render 'divider',
+              id: section.id,
+              settings: section.settings,
+              full_width: true
+            -%}
+
+            {%- if collection.description != blank -%}
+              <div class="family-hub__description rte">{{ collection.description }}</div>
+            {%- endif -%}
+
+            <p class="family-hub__count">
+              {{ collection.products_count }}
+              {%- if collection.products_count == 1 %} color{% else %} colors{% endif %} in this line.
+            </p>
+
+            {%- if section.settings.show_specifications -%}
+              <div class="product-specifications family-hub__specs">
+                {%- render 'technical-specifications',
+                  resource: spec_source,
+                  heading: section.settings.specifications_heading,
+                  show_identifiers: false
+                -%}
+              </div>
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- comment -%}
+    ProductGroup declaring the family. Each child product emits isVariantOf
+    referencing this same productGroupID (the collection handle), so the two
+    sides must stay in step.
+
+    by: 250 exceeds any family size; without paginate collection.products caps
+    around 50 and would silently truncate the group.
+  {%- endcomment -%}
+  {%- comment -%}
+    The separator is emitted before each entry rather than guarding the last
+    one: nested forloop.parentloop.last proved unreliable and left a trailing
+    comma, which is invalid JSON.
+  {%- endcomment -%}
+  {%- assign leaf_separator = '' -%}
+  {%- capture family_variants -%}
+    {%- paginate collection.products by 250 -%}
+      {%- for child in collection.products -%}
+        {%- liquid
+          # shopify.color-pattern: hyphenated key needs bracket syntax, and the
+          # value is a MetaobjectListDrop whose fields require .value.
+          assign child_color = ''
+          assign child_color_value = child.metafields.shopify["color-pattern"].value
+          for color_entry in child_color_value limit: 1
+            assign child_color = color_entry.label.value | default: color_entry.name.value | default: color_entry.label | default: color_entry.name
+          endfor
+          if child_color == blank
+            assign child_color = child.metafields.custom.sae_color.value
+          endif
+
+          assign child_base_mpn = child.metafields.custom.base_model_number.value
+          assign child_image = child.featured_image
+        -%}
+        {%- comment -%}
+          hasVariant lists leaf variants, not child products: Google expects
+          each entry to be a purchasable item with its own sku, price and
+          availability. Listing children with an AggregateOffer would hide the
+          per-size MPNs and stock states.
+        {%- endcomment -%}
+        {%- for variant in child.variants -%}
+          {%- liquid
+            assign leaf_mpn = variant.metafields["mm-google-shopping"].mpn.value | default: child_base_mpn
+            assign leaf_url = variant.url | prepend: request.origin
+            assign leaf_size = variant.title
+            if variant.title == 'Default Title'
+              assign leaf_size = ''
+            endif
+            if variant.available
+              assign leaf_availability = 'https://schema.org/InStock'
+            elsif variant.inventory_policy == 'continue'
+              assign leaf_availability = 'https://schema.org/BackOrder'
+            else
+              assign leaf_availability = 'https://schema.org/OutOfStock'
+            endif
+          -%}
+          {{ leaf_separator }}
+          {%- capture leaf_name -%}
+            {{- child.title -}}
+            {%- if leaf_size != blank %} ({{ leaf_size }}){% endif -%}
+          {%- endcapture -%}
+          {
+            "@type": "Product",
+            "name": {{ leaf_name | strip | json }},
+            "url": {{ leaf_url | json }},
+            "inProductGroupWithID": {{ family_group_id | json }}
+            {%- if child_color != blank -%}
+            ,"color": {{ child_color | json }}
+            {%- endif -%}
+            {%- if leaf_size != blank -%}
+            ,"size": {{ leaf_size | json }}
+            {%- endif -%}
+            {%- if leaf_mpn != blank -%}
+            ,"mpn": {{ leaf_mpn | json }}
+            {%- endif -%}
+            {%- if variant.sku != blank -%}
+            ,"sku": {{ variant.sku | json }}
+            {%- endif -%}
+            {%- if child_image -%}
+            ,"image": {{ child_image | image_url: width: 1200 | prepend: 'https:' | json }}
+            {%- endif -%}
+            ,"offers": {
+              "@type": "Offer",
+              "price": {{ variant.price | default: 0 | divided_by: 100.0 }},
+              "priceCurrency": {{ currency_code | json }},
+              "url": {{ leaf_url | json }},
+              "availability": {{ leaf_availability | json }},
+              "itemCondition": "https://schema.org/NewCondition",
+              "priceValidUntil": {{ price_valid_until | json }}
+            }
+          }
+          {%- assign leaf_separator = ',' -%}
+        {%- endfor -%}
+      {%- endfor -%}
+    {%- endpaginate -%}
+  {%- endcapture -%}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProductGroup",
+    "productGroupID": {{ family_group_id | json }},
+    "name": {{ family_name | json }},
+    "url": {{ family_url | json }},
+    {%- if collection.description != blank -%}
+    "description": {{ collection.description | strip_html | strip_newlines | truncate: 5000 | json }},
+    {%- endif -%}
+    {%- if collection.image -%}
+    "image": {{ collection.image | image_url: width: 1200 | prepend: 'https:' | json }},
+    {%- endif -%}
+    "variesBy": [
+      "https://schema.org/color"
+      {%- if family_varies_by_size -%},"https://schema.org/size"{%- endif -%}
+    ],
+    "hasVariant": [
+      {{- family_variants -}}
+    ]
+  }
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .family-hub__inner {
+    grid-column: 2;
+  }
+
+  .family-hub__title {
+    font-family: var(--font-heading--family);
+    color: var(--color-foreground-heading);
+    margin: 0 0 var(--margin-md) 0;
+  }
+
+  /* Mirrors product-information's media/details split. */
+  .family-hub__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--gap-lg, 24px);
+  }
+
+  @media screen and (min-width: 750px) {
+    .family-hub__grid--media-left {
+      grid-template-columns: 1fr min(50vw, var(--sidebar-width));
+    }
+
+    .family-hub__grid--media-right {
+      grid-template-columns: min(50vw, var(--sidebar-width)) 1fr;
+    }
+
+    .family-hub__grid--media-right .family-hub__media {
+      order: 1;
+    }
+
+    .family-hub__grid--media-right .family-hub__details {
+      order: 0;
+    }
+  }
+
+  .family-hub__media {
+    width: 0;
+    min-width: 100%;
+  }
+
+  .family-hub__image {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .family-hub__description {
+    color: var(--color-foreground);
+    margin-block-end: var(--margin-sm);
+  }
+
+  .family-hub__count {
+    font-size: var(--font-size--sm);
+    color: var(--color-foreground-secondary);
+    margin: 0 0 var(--margin-md) 0;
+  }
+
+  .family-hub__specs {
+    margin-block-start: var(--margin-md);
+  }
+
+
+  /* ---------------------------------------------------------------------
+     Spec-chart styles copied from blocks/product-specifications.liquid.
+     Shopify only emits a stylesheet tag from a rendered section or block, and
+     that block does not render on a collection page. The markup itself is
+     shared via snippets/technical-specifications.liquid, so only these rules
+     are duplicated. Keep in sync if the product-page styling changes.
+     --------------------------------------------------------------------- */
+    .product-specifications {
+      width: 100%;
+      margin-block-start: var(--margin-lg);
+    }
+
+    .product-specifications__heading {
+      font-family: var(--font-heading--family);
+      font-size: var(--font-size--lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-foreground-heading);
+      margin: 0 0 var(--margin-md) 0;
+      padding-block-end: var(--padding-sm);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .product-specifications__list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .product-specifications__row {
+      display: grid;
+      grid-template-columns: minmax(140px, 200px) 1fr;
+      gap: var(--gap-md);
+      padding: var(--padding-sm) 0;
+      border-bottom: 1px solid rgb(var(--color-foreground-rgb) / 0.08);
+      align-items: baseline;
+    }
+
+    .product-specifications__row:last-child {
+      border-bottom: none;
+    }
+
+    .product-specifications__label {
+      font-family: var(--font-body--family);
+      font-size: var(--font-size--sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-foreground-secondary);
+      margin: 0;
+    }
+
+    .product-specifications__label abbr {
+      text-decoration: none;
+      border-bottom: 1px dotted var(--color-foreground-secondary);
+      cursor: help;
+    }
+
+    .product-specifications__value {
+      font-family: var(--font-body--family);
+      font-size: var(--font-size--sm);
+      color: var(--color-foreground);
+      margin: 0;
+      word-break: break-word;
+    }
+
+    /* Tags for Applications */
+    .product-specifications__tag {
+      display: inline-block;
+      padding: var(--padding-2xs) var(--padding-sm);
+      margin-right: var(--margin-xs);
+      margin-bottom: var(--margin-2xs);
+      background: rgb(var(--color-foreground-rgb) / 0.06);
+      border-radius: var(--style-border-radius-buttons-primary, 4px);
+      font-size: var(--font-size--xs);
+      font-weight: var(--font-weight-medium);
+    }
+
+    /* Badge styles for Hazmat */
+    .product-specifications__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--gap-xs);
+      padding: var(--padding-2xs) var(--padding-sm);
+      border-radius: var(--style-border-radius-buttons-primary, 4px);
+      font-size: var(--font-size--sm);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .product-specifications__badge--hazmat {
+      background: rgb(234 88 12 / 0.1);
+      color: rgb(194 65 12);
+    }
+
+    .product-specifications__badge--safe {
+      background: rgb(var(--color-foreground-rgb) / 0.06);
+      color: var(--color-foreground);
+    }
+
+    .product-specifications__icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    /* Inline lists for specs/certs - maintains tabular alignment */
+    .product-specifications__inline-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-2xs);
+    }
+
+    .product-specifications__list-item {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+      line-height: 1.4;
+    }
+
+    .product-specifications__list-item--certified {
+      color: rgb(21 128 61);
+    }
+
+    .product-specifications__check-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: rgb(22 163 74);
+    }
+
+    /* Mobile responsiveness */
+    @media screen and (max-width: 749px) {
+      .product-specifications__row {
+        grid-template-columns: 1fr;
+        gap: var(--gap-2xs);
+      }
+
+      .product-specifications__label {
+        font-weight: var(--font-weight-semibold);
+      }
+    }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Product Family Hub",
+  "tag": "section",
+  "enabled_on": {
+    "templates": ["collection"]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Declares the ProductGroup that child products reference via isVariantOf. Requires a custom.product_family metaobject reference on the collection."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_heading",
+      "label": "Show family heading and description",
+      "info": "Turn off to emit only the structured data.",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "media_position",
+      "label": "Image position",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_specifications",
+      "label": "Show technical specifications",
+      "info": "Reads family-level metafields from the collection, falling back to the first product in it. Per-color rows (MPN, NSN, color) are omitted.",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "specifications_heading",
+      "label": "Specifications heading",
+      "default": "Technical Specifications"
+    },
+    {
+      "type": "select",
+      "id": "section_width",
+      "label": "t:settings.width",
+      "options": [
+        { "value": "page-width", "label": "t:options.page" },
+        { "value": "full-width", "label": "t:options.full" }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Family Hub",
+      "category": "t:categories.products"
+    }
+  ]
+}
+{% endschema %}

@@ -1,25 +1,20 @@
 
 
 {% liquid
-  assign items_in_cart = cart | line_items_for: product
-  assign quick_order_form_id = 'QuickOrder-ProductForm-' | append: product.id | append: '-' | append: section.id
+  # Family collection variant: rows span every child product in the collection,
+  # not the variants of a single product. The quick-order-list.js component is
+  # already product-agnostic (cart updates are keyed by variant id and it never
+  # reads a product id), so this needs no JavaScript changes.
+  assign cart_variant_ids = cart.items | map: 'variant_id'
 %}
 
 {%- comment -%}
-  Name the first column after the product's actual options ("FED-STD-595 Color
-  / Size") instead of a generic "Variant". Falls back to the stock label for
-  single-variant products, whose only option is the placeholder "Title".
+  The first column now spans colours as well as sizes, so it is named by a
+  setting rather than derived from one product's options. Colour, part number,
+  size and NSN all live inside this cell, which keeps the CSS grid at four
+  columns and avoids editing grid-template-columns at four breakpoints.
 {%- endcomment -%}
-{%- capture variant_column_label -%}
-  {%- for option in product.options_with_values -%}
-    {{- option.name -}}
-    {%- unless forloop.last %} / {% endunless -%}
-  {%- endfor -%}
-{%- endcapture -%}
-{%- assign variant_column_label = variant_column_label | strip -%}
-{%- if product.has_only_default_variant or variant_column_label == blank or variant_column_label == 'Title' -%}
-  {%- assign variant_column_label = 'content.variant' | t -%}
-{%- endif -%}
+{%- assign variant_column_label = section.settings.variant_column_label | default: 'Color / Part Number' -%}
 
 <script
   src="{{ 'quick-order-list.js' | asset_url }}"
@@ -46,9 +41,9 @@
   <quick-order-list-component
     class="quick-order-list"
     data-section-id="{{ section.id }}"
-    data-product-id="{{ product.id }}"
-    data-cart-variant-ids="{{ items_in_cart | map: 'variant_id' | json | escape }}"
-    data-url="{{ product.url }}"
+    data-collection-id="{{ collection.id }}"
+    data-cart-variant-ids="{{ cart_variant_ids | json | escape }}"
+    data-url="{{ collection.url }}"
     on:submit="/handleSubmit"
   >
     {%- comment -%}
@@ -73,7 +68,11 @@
         <path class="remove-icon-top" d="M4.25 6h11.5M8 5.25a2 2 0 1 1 4 0" stroke="currentColor" stroke-width="var(--icon-stroke-width)" stroke-linecap="round" stroke-linejoin="round"/>
       </symbol>
     </svg>
-    {%- form 'product', product, id: quick_order_form_id, data-type: 'add-to-cart-form' -%}
+    {%- comment -%}
+      No {% form 'product' %} wrapper: it requires a single product, and nothing
+      here submits. Quantity changes POST to cart_update_url keyed by variant id.
+    {%- endcomment -%}
+    <div class="quick-order-list__form">
         <div
           class="quick-order-list__container"
         >
@@ -120,7 +119,25 @@
               class="quick-order-list__grid-body"
               role="rowgroup"
             >
-              {%- for variant in product.variants -%}
+              {%- paginate collection.products by 250 -%}
+              {%- for child in collection.products -%}
+                {%- liquid
+                  # Colour for this child. shopify.color-pattern has a hyphen in
+                  # the key so it needs bracket syntax, and its value is a
+                  # MetaobjectListDrop whose fields require .value.
+                  assign child_color = ''
+                  assign child_color_value = child.metafields.shopify["color-pattern"].value
+                  for color_entry in child_color_value limit: 1
+                    assign child_color = color_entry.label.value | default: color_entry.name.value | default: color_entry.label | default: color_entry.name
+                  endfor
+                  if child_color == blank
+                    assign child_color = child.metafields.custom.sae_color.value
+                  endif
+                  if child_color == blank
+                    assign child_color = child.title
+                  endif
+                -%}
+                {%- for variant in child.variants -%}
                 {% liquid
                   assign variant_line_items = cart | line_items_for: variant
                   assign variant_cart_quantity = variant_line_items | sum: 'quantity' | default: 0
@@ -164,9 +181,12 @@
                     endcapture
                   endif
 
-                  assign variant_display_name = variant.title
-                  if product.variants_count == 1
-                    assign variant_display_name = product.title
+                  # Row label is the colour; the size comes from the variant
+                  # title, which is the only axis left within a child product.
+                  assign variant_display_name = child_color
+                  assign variant_size_label = variant.title
+                  if child.variants_count == 1 or variant.title == 'Default Title'
+                    assign variant_size_label = ''
                   endif
 
                   assign remove_button_aria_label = 'accessibility.remove_item' | t: title: variant.title | escape
@@ -179,7 +199,7 @@
                   if variant_mpn == blank
                     assign variant_mpn = variant.sku
                   endif
-                  assign variant_nsn = variant.metafields.custom.nsn.value
+                  assign variant_nsn = variant.metafields.custom.nsn.value | default: child.metafields.custom.nsn.value
 
                   capture quantity_selector_markup
                     render 'quantity-selector', product: product, variant: variant, in_cart_quantity: variant_cart_quantity, line_index: forloop.index, class: 'quantity cart-quantity', min: 0
@@ -198,9 +218,10 @@
                     <div class="variant-item__inner-container">
                       {% if section.settings.show_image %}
                         <div class="variant-item__image-container">
-                          {% if variant.image %}
+                          {% assign row_image = variant.image | default: child.featured_image %}
+                          {% if row_image %}
                             {{
-                              variant.image
+                              row_image
                               | image_url: width: 86
                               | image_tag:
                                 widths: '86',
@@ -213,7 +234,12 @@
                       {% endif %}
                       <div class="variant-item__details">
                         <span class="variant-item__name hidden--mobile">
-                          {{ variant_display_name }}
+                          <a class="variant-item__product-link" href="{{ child.url }}">
+                            {{- variant_display_name -}}
+                          </a>
+                          {%- if variant_size_label != blank -%}
+                            <span class="variant-item__size">{{ variant_size_label }}</span>
+                          {%- endif -%}
                         </span>
                         {% if section.settings.show_mpn and variant_mpn != blank %}
                           <span class="variant-item__sku hidden--mobile">{{ variant_mpn }}</span>
@@ -227,7 +253,12 @@
                         <div class="variant-item__mobile-info hidden--desktop">
                           <div class="variant-item__title-container">
                             <span class="variant-item__name">
-                              {{ variant_display_name }}
+                              <a class="variant-item__product-link" href="{{ child.url }}">
+                                {{- variant_display_name -}}
+                              </a>
+                              {%- if variant_size_label != blank -%}
+                                <span class="variant-item__size">{{ variant_size_label }}</span>
+                              {%- endif -%}
                             </span>
                             {% if section.settings.show_mpn and variant_mpn != blank %}
                               <span class="variant-item__sku">{{ variant_mpn }}</span>
@@ -390,14 +421,16 @@
                     </text-component>
                   </div>
                 </div>
+                {%- endfor -%}
               {%- endfor -%}
+              {%- endpaginate -%}
             </div>
           </div>
         </div>
-    {%- endform -%}
+    </div>
     {% liquid
-      assign total_items_count = items_in_cart | sum: 'quantity' | default: 0
-      assign total_price_value = cart | line_items_for: product | sum: 'original_line_price'
+      assign total_items_count = cart.item_count | default: 0
+      assign total_price_value = cart.total_price | default: 0
     %}
     {% capture total_price %}{% render 'format-price', price: total_price_value %}{% endcapture %}
     <div class="quick-order-list-total">
@@ -1156,6 +1189,21 @@
     }
   }
 
+  .variant-item__product-link {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .variant-item__product-link:hover {
+    text-decoration: underline;
+  }
+
+  .variant-item__size {
+    display: block;
+    font-size: var(--font-size--xs);
+    color: var(--color-foreground-secondary);
+  }
+
   .variant-item__nsn {
     display: block;
     font-size: var(--font-size--xs);
@@ -1172,16 +1220,22 @@
 
 {% schema %}
 {
-  "name": "Technical Order List",
+  "name": "Family Order List",
   "tag": "section",
   "enabled_on": {
-    "templates": ["product"]
+    "templates": ["collection"]
   },
   "blocks": [],
   "settings": [
     {
       "type": "paragraph",
       "content": "Forked from Shopify's Quick Order List. Renders every variant with no pagination, shows manufacturer part numbers and NSNs, and uses an icon sprite instead of re-inlining SVGs per row."
+    },
+    {
+      "type": "text",
+      "id": "variant_column_label",
+      "label": "First column heading",
+      "default": "Color / Part Number"
     },
     {
       "type": "checkbox",
@@ -1236,7 +1290,7 @@
   ],
   "presets": [
     {
-      "name": "Technical Order List",
+      "name": "Family Order List",
       "category": "t:categories.products",
       "settings": {
         "padding-block-start": 48,

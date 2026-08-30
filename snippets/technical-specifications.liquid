@@ -1,0 +1,187 @@
+{%- doc -%}
+  Technical Specifications List
+
+  Renders the technical/compliance specification rows shared by product pages
+  and product family collection pages. Extracted from
+  blocks/product-specifications.liquid so both surfaces render identical markup
+  rather than maintaining two copies.
+
+  The caller supplies the wrapper element and the CSS (Shopify only emits
+  {% stylesheet %} from a rendered section or block, not from a snippet).
+
+  @param {object} resource - Metafield owner: a product, or a collection
+  @param {string} heading - Optional heading text; omitted when blank
+  @param {boolean} show_identifiers - Include the per-item rows (MPN, NSN, SAE
+    colour). False on a family page, where those vary per colour and a single
+    value would misrepresent the line.
+{%- enddoc -%}
+
+{%- liquid
+  assign sae_color = resource.metafields.custom.sae_color.value
+  assign qpl_list = resource.metafields.custom.qpl.value
+  assign mil_specs = resource.metafields.custom.mil_specs.value
+  assign is_hazmat = resource.metafields.custom.is_hazmat.value
+  assign mfr_part_number = resource.metafields.custom.manufacturer_part_number.value
+  assign nsn = resource.metafields.custom.nsn.value
+  assign applications = resource.metafields.custom.applications.value
+  assign certifications = resource.metafields.custom.compliance_certifications.value
+
+  assign has_specs = false
+  if mil_specs != blank or qpl_list != blank or applications != blank or is_hazmat != nil or certifications != blank
+    assign has_specs = true
+  endif
+  if show_identifiers and sae_color != blank or show_identifiers and mfr_part_number != blank or show_identifiers and nsn != blank
+    assign has_specs = true
+  endif
+-%}
+
+{%- if has_specs -%}
+    {%- if heading != blank -%}
+      <h2 class="product-specifications__heading">{{ heading }}</h2>
+    {%- endif -%}
+
+    <dl class="product-specifications__list">
+
+      {%- comment -%} Manufacturer Part Number {%- endcomment -%}
+      {%- if show_identifiers and mfr_part_number != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Manufacturer Part Number</dt>
+          <dd class="product-specifications__value">{{ mfr_part_number }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} NSN - National Stock Number {%- endcomment -%}
+      {%- if show_identifiers and nsn != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">
+            <abbr title="National Stock Number">NSN</abbr>
+          </dt>
+          <dd class="product-specifications__value">{{ nsn }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} SAE Color {%- endcomment -%}
+      {%- if show_identifiers and sae_color != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">SAE Color</dt>
+          <dd class="product-specifications__value">{{ sae_color }}</dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Applications - handles both list metafield (array) and string formats {%- endcomment -%}
+      {%- if applications != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Applications</dt>
+          <dd class="product-specifications__value">
+            {%- comment -%} Check if it's an array (list metafield) by checking for .size {%- endcomment -%}
+            {%- if applications.size > 0 and applications.first != blank -%}
+              {%- comment -%} It's an array - iterate directly {%- endcomment -%}
+              {%- for app in applications -%}
+                <span class="product-specifications__tag">{{ app | strip }}</span>
+              {%- endfor -%}
+            {%- else -%}
+              {%- comment -%} It's a string - split by comma {%- endcomment -%}
+              {%- assign app_list = applications | split: ',' -%}
+              {%- for app in app_list -%}
+                <span class="product-specifications__tag">{{ app | strip }}</span>
+              {%- endfor -%}
+            {%- endif -%}
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Hazmat Status {%- endcomment -%}
+      {%- if is_hazmat != nil -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Hazardous Material</dt>
+          <dd class="product-specifications__value">
+            {%- if is_hazmat -%}
+              <span class="product-specifications__badge product-specifications__badge--hazmat">
+                <svg class="product-specifications__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                </svg>
+                Yes - Additional shipping fees may apply
+              </span>
+            {%- else -%}
+              <span class="product-specifications__badge product-specifications__badge--safe">No</span>
+            {%- endif -%}
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Military Specifications - metaobject with long_name, short_name, document_type, spec_number, etc. {%- endcomment -%}
+      {%- if mil_specs != blank and mil_specs.size > 0 -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Military Specifications</dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list">
+              {%- for spec in mil_specs -%}
+                <li class="product-specifications__list-item">
+                  {%- if spec.long_name.value != blank -%}
+                    {{ spec.long_name.value }}
+                  {%- elsif spec.short_name.value != blank -%}
+                    {{ spec.short_name.value }}
+                  {%- else -%}
+                    {%- if spec.document_type.value != blank -%}{{ spec.document_type.value }}{%- endif -%}
+                    {%- if spec.spec_number.value != blank -%}-{{ spec.spec_number.value }}{%- endif -%}
+                    {%- if spec.type.value != blank -%} Type {{ spec.type.value }}{%- endif -%}
+                    {%- if spec.class.value != blank -%} Class {{ spec.class.value }}{%- endif -%}
+                  {%- endif -%}
+                </li>
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} QPL - Qualified Products List (same metaobject type as military_specifications) {%- endcomment -%}
+      {%- if qpl_list != blank and qpl_list.size > 0 -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">
+            <abbr title="Qualified Products List">QPL</abbr> Certifications
+          </dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list product-specifications__inline-list--certified">
+              {%- for qpl in qpl_list -%}
+                <li class="product-specifications__list-item product-specifications__list-item--certified">
+                  <svg class="product-specifications__check-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
+                  </svg>
+                  <span>
+                    {%- if qpl.long_name.value != blank -%}
+                      {{ qpl.long_name.value }}
+                    {%- elsif qpl.short_name.value != blank -%}
+                      {{ qpl.short_name.value }}
+                    {%- else -%}
+                      {%- if qpl.document_type.value != blank -%}{{ qpl.document_type.value }}{%- endif -%}
+                      {%- if qpl.spec_number.value != blank -%}-{{ qpl.spec_number.value }}{%- endif -%}
+                      {%- if qpl.type.value != blank -%} Type {{ qpl.type.value }}{%- endif -%}
+                      {%- if qpl.class.value != blank -%} Class {{ qpl.class.value }}{%- endif -%}
+                    {%- endif -%}
+                  </span>
+                </li>
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} Compliance & Certifications {%- endcomment -%}
+      {%- if certifications != blank -%}
+        <div class="product-specifications__row">
+          <dt class="product-specifications__label">Compliance & Certifications</dt>
+          <dd class="product-specifications__value">
+            <ul class="product-specifications__inline-list">
+              {%- for cert in certifications -%}
+                {%- assign cert_trimmed = cert | strip -%}
+                {%- if cert_trimmed != blank -%}
+                  <li class="product-specifications__list-item">{{ cert_trimmed }}</li>
+                {%- endif -%}
+              {%- endfor -%}
+            </ul>
+          </dd>
+        </div>
+      {%- endif -%}
+
+    </dl>
+{%- endif -%}
