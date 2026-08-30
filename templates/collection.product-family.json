@@ -19,6 +19,19 @@
         "padding-block-end": 16
       }
     },
+    "family_hub": {
+      "type": "product-family-hub",
+      "settings": {
+        "show_heading": false,
+        "media_position": "left",
+        "show_specifications": true,
+        "specifications_heading": "Technical Specifications",
+        "section_width": "page-width",
+        "color_scheme": "scheme-1",
+        "padding-block-start": 32,
+        "padding-block-end": 16
+      }
+    },
     "section": {
       "type": "section",
       "blocks": {
@@ -41,6 +54,7 @@
             "background": false,
             "background_color": "#00000026",
             "corner_radius": 0,
+            "scroll_animation": "none",
             "padding-block-start": 0,
             "padding-block-end": 0,
             "padding-inline-start": 0,
@@ -67,6 +81,7 @@
             "background": false,
             "background_color": "#00000026",
             "corner_radius": 0,
+            "scroll_animation": "none",
             "padding-block-start": 0,
             "padding-block-end": 0,
             "padding-inline-start": 0,
@@ -111,6 +126,29 @@
     "main": {
       "type": "main-collection",
       "blocks": {
+        "filters": {
+          "type": "filters",
+          "static": true,
+          "settings": {
+            "enable_filtering": false,
+            "filter_style": "horizontal",
+            "filter_width": "centered",
+            "text_label_case": "default",
+            "show_swatch_label": false,
+            "show_filter_label": false,
+            "enable_sorting": true,
+            "enable_grid_density": true,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "padding-block-start": 0,
+            "padding-block-end": 0,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0,
+            "facets_margin_bottom": 8,
+            "facets_margin_right": 20
+          },
+          "blocks": {}
+        },
         "product-card": {
           "type": "_product-card",
           "static": true,
@@ -198,6 +236,7 @@
           ]
         }
       },
+      "disabled": true,
       "settings": {
         "layout_type": "grid",
         "product_card_size": "medium",
@@ -215,14 +254,17 @@
         "padding-block-end": 32
       }
     },
-    "family_hub": {
-      "type": "product-family-hub",
+    "quick_order_list_technical_d48qQM": {
+      "type": "quick-order-list-technical",
+      "name": "Family Order List",
       "settings": {
-        "show_heading": true,
-        "section_width": "page-width",
-        "color_scheme": "scheme-1",
-        "padding-block-start": 32,
-        "padding-block-end": 16
+        "variant_column_label": "Color / Part Number",
+        "show_mpn": true,
+        "show_nsn": true,
+        "show_image": false,
+        "color_scheme": "",
+        "padding-block-start": 48,
+        "padding-block-end": 48
       }
     }
   },
@@ -230,6 +272,7 @@
     "breadcrumb_dE6JWU",
     "family_hub",
     "section",
-    "main"
+    "main",
+    "quick_order_list_technical_d48qQM"
   ]
 }
