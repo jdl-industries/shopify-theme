@@ -176,10 +176,46 @@
   additional_blocks: additional_blocks
 %}
 
+{%- comment -%}
+  Part number lookup for the document title. The variant:update event payload
+  carries the variant but not its metafields, so the MPN map is rendered
+  server-side. Mirrors the resolution in snippets/meta-tags.liquid:
+  mm-google-shopping.mpn -> sku.
+{%- endcomment -%}
+{%- capture variant_mpn_map -%}
+  {
+  {%- for v in product.variants -%}
+    {%- assign v_mpn = v.metafields["mm-google-shopping"].mpn.value | default: v.sku -%}
+    "{{ v.id }}": {{ v_mpn | json }}{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+  }
+{%- endcapture -%}
+{%- comment -%}
+  Base document title, matching how snippets/meta-tags.liquid assembles it so
+  the client-side value stays consistent with the server-rendered one.
+{%- endcomment -%}
+{%- capture base_document_title -%}
+  {{- page_title -}}
+  {%- unless page_title contains shop.name %} – {{ shop.name }}{% endunless -%}
+{%- endcapture -%}
+
 <script>
   (function() {
     const baseProductTitle = {{ product.title | json }};
     const initialVariant = {{ product.selected_or_first_available_variant | json }};
+    const variantMpns = {{ variant_mpn_map }};
+    const baseDocumentTitle = {{ base_document_title | strip | json }};
+
+    // Only reflect the part number in the document title once the shopper has
+    // actually chosen a variant, so the canonical product URL keeps the family
+    // title on first paint.
+    let variantChosen = {% if product.selected_variant %}true{% else %}false{% endif %};
+
+    function updateDocumentTitle(variant) {
+      if (!variantChosen) return;
+      const mpn = variant && variantMpns[String(variant.id)];
+      document.title = mpn ? mpn + ' | ' + baseDocumentTitle : baseDocumentTitle;
+    }
 
     function updateProductTitle(variant) {
       // Find the product title element - look for text-block with h3 class containing a p tag
@@ -217,7 +253,9 @@
 
     // Listen for variant:update events
     document.addEventListener('variant:update', function(event) {
+      variantChosen = true;
       updateProductTitle(event.detail?.resource);
+      updateDocumentTitle(event.detail?.resource);
     });
   })();
 </script>

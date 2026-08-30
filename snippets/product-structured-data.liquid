@@ -163,7 +163,7 @@
           # Falling back to it publishes an identical mpn on every variant,
           # which is false data, not merely missing data. An absent mpn is the
           # correct output when the variant metafield is unpopulated.
-          assign v_mpn = variant.metafields.custom.full_mpn.value
+          assign v_mpn = variant.metafields["mm-google-shopping"].mpn.value
           assign v_nsn = variant.metafields.custom.nsn.value | default: product_nsn
 
           assign v_color = variant.metafields.custom.sae_color.value
@@ -317,7 +317,7 @@
       still resolves variant-first so a converted single-variant product works.
     {%- endcomment -%}
     {%- liquid
-      assign v_mpn = current_variant.metafields.custom.full_mpn.value | default: product_mpn
+      assign v_mpn = current_variant.metafields["mm-google-shopping"].mpn.value | default: product_mpn
       assign v_nsn = current_variant.metafields.custom.nsn.value | default: product_nsn
 
       assign v_color = current_variant.metafields.custom.sae_color.value

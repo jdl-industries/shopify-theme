@@ -20,9 +20,9 @@
     3. variant option value, matched by option NAME not position
 
   Metafields used:
-  - variant custom.full_mpn, custom.nsn, custom.sae_color, custom.size
-  - product custom.manufacturer_part_number, custom.nsn, custom.sae_color,
-    custom.lead_time
+  - variant mm-google-shopping.mpn (note: app-owned namespace, bracket syntax)
+  - variant custom.nsn, custom.sae_color, custom.size
+  - product custom.nsn, custom.lead_time
 
   Renders nothing for single-variant products, where a one-row table adds no value.
 {%- enddoc -%}
@@ -36,8 +36,6 @@
   assign current_variant_id = product.selected_or_first_available_variant.id
 
   # Legacy product-level fallbacks
-  assign product_sae_color = product.metafields.custom.sae_color.value
-  assign product_mpn = product.metafields.custom.manufacturer_part_number.value
   assign product_nsn = product.metafields.custom.nsn.value
   assign lead_time = product.metafields.custom.lead_time.value
 
@@ -125,7 +123,6 @@
                 filter_color: color_label,
                 color_option_index: color_option_index,
                 size_option_index: size_option_index,
-                product_mpn: product_mpn,
                 product_nsn: product_nsn,
                 lead_time: lead_time,
                 current_variant_id: current_variant_id,
@@ -140,10 +137,9 @@
             {%- render 'variant-matrix-row',
               product: product,
               group_label: product.title,
-              filter_color: blank,
+              filter_color: '',
               color_option_index: color_option_index,
               size_option_index: size_option_index,
-              product_mpn: product_mpn,
               product_nsn: product_nsn,
               lead_time: lead_time,
               current_variant_id: current_variant_id,

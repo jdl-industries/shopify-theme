@@ -101,7 +101,26 @@
   content="{{ og_description | escape }}"
 >
 
+{%- liquid
+  # Variant-specific title. product.selected_variant is populated ONLY when
+  # ?variant= is explicitly in the URL; selected_or_first_available_variant is
+  # never blank and would put the first variant's part number on the canonical
+  # product URL, which is wrong.
+  #
+  # Note on scope: Shopify canonicalises ?variant= URLs to the bare product
+  # path, so this title will rarely be what Google shows. It is here for
+  # browser tabs, shared links and social previews, not for ranking.
+  assign variant_title_prefix = ''
+  if request.page_type == 'product' and product.selected_variant
+    assign selected_mpn = product.selected_variant.metafields["mm-google-shopping"].mpn.value | default: product.selected_variant.sku
+    if selected_mpn != blank
+      assign variant_title_prefix = selected_mpn | append: ' | '
+    endif
+  endif
+-%}
+
 <title>
+  {{- variant_title_prefix -}}
   {{ page_title }}
   {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
   {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}

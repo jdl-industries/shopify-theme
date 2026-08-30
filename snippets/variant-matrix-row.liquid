@@ -13,7 +13,6 @@
   @param {string} filter_color - Only include variants matching this color. Blank includes all.
   @param {number} color_option_index - Position of the color option, or -1
   @param {number} size_option_index - Position of the size option, or -1
-  @param {string} product_mpn - Product-level MPN fallback
   @param {string} product_nsn - Product-level NSN fallback
   @param {string} lead_time - Product-level lead time text
   @param {number} current_variant_id - Currently selected variant, for highlighting
@@ -75,7 +74,7 @@
             # the family number, and using it per-row prints one identical part
             # number against every color. SKU is per-variant, so it is the right
             # display fallback here even though it is not schema-grade `mpn`.
-            assign row_mpn = variant.metafields.custom.full_mpn.value
+            assign row_mpn = variant.metafields["mm-google-shopping"].mpn.value
             if row_mpn == blank
               assign row_mpn = variant.sku
             endif
