@@ -1,0 +1,213 @@
+{%- doc -%}
+  Product Family Selector
+
+  Renders a dropdown for choosing a sibling product in the same product family.
+  Visually matches the native variant picker's dropdown style, but navigates to
+  another product instead of swapping a variant.
+
+  Used by the combined-listings architecture, where each colour is its own
+  product (preserving its own URL, title and H1 for exact part-number search)
+  rather than a variant of a shared parent.
+
+  Resolution path:
+    product -> custom.product_family (metaobject)
+            -> custom.collection     (the family collection)
+            -> products              (the siblings)
+
+  Crawl note: options in a <select> are not links, so this does not create
+  sibling-to-sibling link paths. Discovery comes from the family collection
+  page, which links to every child.
+
+  The attribute used for each option's label is configurable, defaulting to
+  Shopify's standard category metafield shopify.color-pattern. That key
+  contains a hyphen, so it must be read with bracket syntax, and its value is
+  a metaobject list whose fields require .value.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign family = product.metafields.custom.product_family.value
+  assign family_collection = family.collection.value
+
+  # Split the configured "namespace.key" so the lookup can be done dynamically.
+  assign attribute_path = block.settings.label_attribute | default: 'shopify.color-pattern'
+  assign attribute_parts = attribute_path | split: '.'
+  assign attribute_namespace = attribute_parts[0]
+  assign attribute_key = attribute_parts[1]
+-%}
+
+{%- if family_collection != blank and family_collection.products_count > 0 -%}
+  <div
+    class="variant-option variant-option--dropdowns family-selector family-selector--{{ block.id }} spacing-style"
+    style="{% render 'spacing-style', settings: block.settings %}"
+    {{ block.shopify_attributes }}
+  >
+    <label for="FamilySelector-{{ block.id }}">
+      {{- block.settings.label | default: 'Color' | escape -}}
+    </label>
+    <div class="variant-option__select-wrapper">
+      <select
+        id="FamilySelector-{{ block.id }}"
+        class="variant-option__select"
+        data-family-selector
+      >
+        {%- comment -%}
+          by: 250 comfortably exceeds any family size. Without a paginate
+          wrapper collection.products caps out around 50, which would silently
+          truncate a large family.
+        {%- endcomment -%}
+        {%- paginate family_collection.products by 250 -%}
+          {%- assign resolved_count = 0 -%}
+          {%- for sibling in family_collection.products -%}
+            {%- liquid
+              assign raw_attribute = sibling.metafields[attribute_namespace][attribute_key]
+              assign option_label = ''
+
+              if raw_attribute != blank
+                assign attribute_value = raw_attribute.value
+
+                # A list.metaobject_reference resolves to a MetaobjectListDrop,
+                # which does not expose .first and stringifies to the literal
+                # "MetaobjectListDrop". Iterate it instead. Metaobject field
+                # access needs .value, matching blocks/product-specifications.
+                for entry in attribute_value limit: 1
+                  assign option_label = entry.label.value | default: entry.name.value | default: entry.label | default: entry.name
+                endfor
+
+                # Single metaobject reference rather than a list.
+                if option_label == blank
+                  assign option_label = attribute_value.label.value | default: attribute_value.label
+                endif
+
+                # Plain text metafield. Guard against assigning an unhandled
+                # drop, which is what produced the MetaobjectListDrop output.
+                if option_label == blank
+                  assign candidate = attribute_value | append: ''
+                  unless candidate contains 'Drop'
+                    assign option_label = candidate
+                  endunless
+                endif
+              endif
+
+              if option_label != blank
+                assign resolved_count = resolved_count | plus: 1
+              else
+                assign option_label = sibling.title
+              endif
+            -%}
+            <option
+              value="{{ sibling.url }}"
+              {% if sibling.id == product.id %}
+                selected="selected"
+              {% endif %}
+            >
+              {{- option_label | escape -}}
+              {%- unless sibling.available %} - {{ 'content.unavailable' | t }}{% endunless -%}
+            </option>
+          {%- endfor -%}
+        {%- endpaginate -%}
+      </select>
+      <svg
+        aria-hidden="true"
+        focusable="false"
+        class="icon icon-caret"
+        viewBox="0 0 10 6"
+      >
+        {%- render 'icon', icon: 'caret' -%}
+      </svg>
+    </div>
+
+    {%- comment -%}
+      A mistyped attribute path fails silently to product titles, which looks
+      plausible but is wrong. Surface it in the theme editor only.
+    {%- endcomment -%}
+    {%- if request.design_mode and resolved_count == 0 -%}
+      <p class="family-selector__warning">
+        No labels resolved from
+        <code>{{ attribute_path | escape }}</code>
+        &mdash; falling back to product titles. Check the namespace and key.
+      </p>
+    {%- endif -%}
+  </div>
+
+  <script>
+    (function () {
+      var select = document.getElementById('FamilySelector-{{ block.id }}');
+      if (!select) return;
+      select.addEventListener('change', function () {
+        if (select.value) window.location.href = select.value;
+      });
+    })();
+  </script>
+{%- endif -%}
+
+{% stylesheet %}
+  .family-selector__warning {
+    margin-block-start: var(--margin-xs);
+    padding: var(--padding-xs) var(--padding-sm);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+    background: rgb(234 88 12 / 0.1);
+    color: rgb(154 52 18);
+    font-size: var(--font-size--xs);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Family Selector",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Dropdown linking to sibling products in the same family. Requires a custom.product_family metaobject reference on the product, with a collection field pointing at the family collection."
+    },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Label",
+      "default": "Color"
+    },
+    {
+      "type": "text",
+      "id": "label_attribute",
+      "label": "Option label attribute",
+      "info": "Metafield path used for each option, as namespace.key. Defaults to shopify.color-pattern. Falls back to the product title when empty or not found.",
+      "default": "shopify.color-pattern"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    }
+  ],
+  "presets": [
+    {
+      "name": "Family Selector",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}
