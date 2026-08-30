@@ -42,7 +42,26 @@
 
   # Legacy product-level spec fields, used as fallbacks for catalog entries that
   # have not been consolidated into variants yet.
-  assign product_sae_color = product.metafields.custom.sae_color.value
+  # Product-level colour. Under combined listings each product is a single
+  # colour, held in Shopify's standard category metafield. That key contains a
+  # hyphen so it needs bracket syntax, and its value is a MetaobjectListDrop
+  # whose fields require .value — .first yields a drop literal, not a label.
+  assign product_sae_color = ''
+  assign color_pattern_value = product.metafields.shopify["color-pattern"].value
+  for color_entry in color_pattern_value limit: 1
+    assign product_sae_color = color_entry.label.value | default: color_entry.name.value | default: color_entry.label | default: color_entry.name
+  endfor
+  if product_sae_color == blank
+    assign product_sae_color = product.metafields.custom.sae_color.value
+  endif
+
+  # Combined listings: this product is one colour within a family, and the
+  # family metaobject points at the collection holding its siblings.
+  assign family = product.metafields.custom.product_family.value
+  assign family_collection = family.collection.value
+  assign family_name = family.name.value | default: family_collection.title
+  assign family_group_id = family_collection.handle
+  assign family_url = family_collection.url | prepend: request.origin
   assign product_mpn = product.metafields.custom.manufacturer_part_number.value
   assign product_nsn = product.metafields.custom.nsn.value
 
@@ -141,6 +160,26 @@
       variesBy tells Google these are variants of one item rather than duplicates.
     {%- endcomment -%}
     "productGroupID": {{ product.id | json }},
+    {%- comment -%}
+      Combined listings: this group varies by size, and is itself one colour
+      within a larger family that varies by colour. ProductGroup is a subtype
+      of Product, so isVariantOf on it is valid.
+    {%- endcomment -%}
+    {%- if family_collection != blank -%}
+    "isVariantOf": {
+      "@type": "ProductGroup",
+      "productGroupID": {{ family_group_id | json }},
+      "name": {{ family_name | json }},
+      "url": {{ family_url | json }}
+    },
+    {%- endif -%}
+    {%- comment -%}
+      Only assert a colour on the group when colour is NOT a variant axis.
+      On the legacy multi-colour product this would be false.
+    {%- endcomment -%}
+    {%- if color_option_index < 0 and product_sae_color != blank -%}
+    "color": {{ product_sae_color | json }},
+    {%- endif -%}
     {%- if product.metafields.custom.base_model_number.value != blank -%}
     "mpn": {{ product.metafields.custom.base_model_number.value | json }},
     {%- elsif product_mpn != blank -%}
@@ -367,6 +406,14 @@
     {%- endif -%}
     {%- if v_color != blank -%}
     "color": {{ v_color | json }},
+    {%- endif -%}
+    {%- if family_collection != blank -%}
+    "isVariantOf": {
+      "@type": "ProductGroup",
+      "productGroupID": {{ family_group_id | json }},
+      "name": {{ family_name | json }},
+      "url": {{ family_url | json }}
+    },
     {%- endif -%}
     "additionalProperty": [
       {%- comment -%}
