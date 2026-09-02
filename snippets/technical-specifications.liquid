@@ -18,16 +18,15 @@
 
 {%- liquid
   assign sae_color = resource.metafields.custom.sae_color.value
-  assign qpl_list = resource.metafields.custom.qpl.value
-  assign mil_specs = resource.metafields.custom.mil_specs.value
+  assign meets_specs = resource.metafields.custom.meets_specifications.value
+  assign approved_specs = resource.metafields.custom.approved_specifications.value
   assign is_hazmat = resource.metafields.custom.is_hazmat.value
   assign mfr_part_number = resource.metafields.custom.manufacturer_part_number.value
   assign nsn = resource.metafields.custom.nsn.value
   assign applications = resource.metafields.custom.applications.value
-  assign certifications = resource.metafields.custom.compliance_certifications.value
 
   assign has_specs = false
-  if mil_specs != blank or qpl_list != blank or applications != blank or is_hazmat != nil or certifications != blank
+  if meets_specs != blank or approved_specs != blank or applications != blank or is_hazmat != nil
     assign has_specs = true
   endif
   if show_identifiers and sae_color != blank or show_identifiers and mfr_part_number != blank or show_identifiers and nsn != blank
@@ -109,54 +108,28 @@
         </div>
       {%- endif -%}
 
-      {%- comment -%} Military Specifications - metaobject with long_name, short_name, document_type, spec_number, etc. {%- endcomment -%}
-      {%- if mil_specs != blank and mil_specs.size > 0 -%}
+      {%- comment -%}
+        Specifications this product is formally approved against (QPL listings
+        for military authorities, OEM approvals otherwise).
+      {%- endcomment -%}
+      {%- if approved_specs != blank and approved_specs.size > 0 -%}
         <div class="product-specifications__row">
-          <dt class="product-specifications__label">Military Specifications</dt>
-          <dd class="product-specifications__value">
-            <ul class="product-specifications__inline-list">
-              {%- for spec in mil_specs -%}
-                <li class="product-specifications__list-item">
-                  {%- if spec.long_name.value != blank -%}
-                    {{ spec.long_name.value }}
-                  {%- elsif spec.short_name.value != blank -%}
-                    {{ spec.short_name.value }}
-                  {%- else -%}
-                    {%- if spec.document_type.value != blank -%}{{ spec.document_type.value }}{%- endif -%}
-                    {%- if spec.spec_number.value != blank -%}-{{ spec.spec_number.value }}{%- endif -%}
-                    {%- if spec.type.value != blank -%} Type {{ spec.type.value }}{%- endif -%}
-                    {%- if spec.class.value != blank -%} Class {{ spec.class.value }}{%- endif -%}
-                  {%- endif -%}
-                </li>
-              {%- endfor -%}
-            </ul>
-          </dd>
-        </div>
-      {%- endif -%}
-
-      {%- comment -%} QPL - Qualified Products List (same metaobject type as military_specifications) {%- endcomment -%}
-      {%- if qpl_list != blank and qpl_list.size > 0 -%}
-        <div class="product-specifications__row">
-          <dt class="product-specifications__label">
-            <abbr title="Qualified Products List">QPL</abbr> Certifications
-          </dt>
+          <dt class="product-specifications__label">QPL/OEM Specifications</dt>
           <dd class="product-specifications__value">
             <ul class="product-specifications__inline-list product-specifications__inline-list--certified">
-              {%- for qpl in qpl_list -%}
+              {%- for spec in approved_specs -%}
+                {%- assign spec_collection = spec.collection.value -%}
                 <li class="product-specifications__list-item product-specifications__list-item--certified">
                   <svg class="product-specifications__check-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
                   </svg>
                   <span>
-                    {%- if qpl.long_name.value != blank -%}
-                      {{ qpl.long_name.value }}
-                    {%- elsif qpl.short_name.value != blank -%}
-                      {{ qpl.short_name.value }}
+                    {%- if spec_collection != blank -%}
+                      <a class="product-specifications__spec-link" href="{{ spec_collection.url }}">
+                        {{- spec.title.value -}}
+                      </a>
                     {%- else -%}
-                      {%- if qpl.document_type.value != blank -%}{{ qpl.document_type.value }}{%- endif -%}
-                      {%- if qpl.spec_number.value != blank -%}-{{ qpl.spec_number.value }}{%- endif -%}
-                      {%- if qpl.type.value != blank -%} Type {{ qpl.type.value }}{%- endif -%}
-                      {%- if qpl.class.value != blank -%} Class {{ qpl.class.value }}{%- endif -%}
+                      {{ spec.title.value }}
                     {%- endif -%}
                   </span>
                 </li>
@@ -166,17 +139,28 @@
         </div>
       {%- endif -%}
 
-      {%- comment -%} Compliance & Certifications {%- endcomment -%}
-      {%- if certifications != blank -%}
+      {%- comment -%}
+        Specifications the manufacturer states this product meets or exceeds.
+        Each is a `specification` metaobject; the title links to that spec's
+        collection when one is set, giving a browse path for engineers
+        searching by specification rather than by part number.
+      {%- endcomment -%}
+      {%- if meets_specs != blank and meets_specs.size > 0 -%}
         <div class="product-specifications__row">
-          <dt class="product-specifications__label">Compliance & Certifications</dt>
+          <dt class="product-specifications__label">Meets Specifications</dt>
           <dd class="product-specifications__value">
             <ul class="product-specifications__inline-list">
-              {%- for cert in certifications -%}
-                {%- assign cert_trimmed = cert | strip -%}
-                {%- if cert_trimmed != blank -%}
-                  <li class="product-specifications__list-item">{{ cert_trimmed }}</li>
-                {%- endif -%}
+              {%- for spec in meets_specs -%}
+                {%- assign spec_collection = spec.collection.value -%}
+                <li class="product-specifications__list-item">
+                  {%- if spec_collection != blank -%}
+                    <a class="product-specifications__spec-link" href="{{ spec_collection.url }}">
+                      {{- spec.title.value -}}
+                    </a>
+                  {%- else -%}
+                    {{ spec.title.value }}
+                  {%- endif -%}
+                </li>
               {%- endfor -%}
             </ul>
           </dd>

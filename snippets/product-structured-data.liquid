@@ -35,9 +35,8 @@
 
   # Product-family-level metafields. These describe the whole line and stay on
   # the parent regardless of how many variants hang off it.
-  assign mil_specs = product.metafields.custom.mil_specs.value
-  assign qpl_list = product.metafields.custom.qpl.value
-  assign certifications = product.metafields.custom.compliance_certifications.value
+  assign meets_specs = product.metafields.custom.meets_specifications.value
+  assign approved_specs = product.metafields.custom.approved_specifications.value
   assign is_hazmat = product.metafields.custom.is_hazmat.value
 
   # Legacy product-level spec fields, used as fallbacks for catalog entries that
@@ -98,35 +97,50 @@
   the array valid JSON without needing to trim a dangling separator.
 {%- endcomment -%}
 {%- capture family_additional_properties -%}
-  {%- if mil_specs != blank and mil_specs.size > 0 -%}
-    {%- for spec in mil_specs -%}
-      {
-        "@type":"PropertyValue",
-        "name":"Military Specification",
-        "value":{{ spec.long_name.value | json }},
-        "description": {{ spec.description.value | json }}
-      },
-    {%- endfor -%}
-  {%- endif -%}
+  {%- comment -%}
+    Specification metaobjects. propertyID carries the base specification, which
+    is the stable identifier within the coding scheme; value carries the full
+    title including type and class. url points at the spec's collection so the
+    identifier resolves to a real page.
 
-  {%- if qpl_list != blank and qpl_list.size > 0 -%}
+    governing_body is an enumeration, so an exact match on "US Military"
+    distinguishes a QPL listing from an OEM approval.
+  {%- endcomment -%}
+  {%- for spec in meets_specs -%}
+    {%- assign spec_collection = spec.collection.value -%}
     {
       "@type": "PropertyValue",
-      "name": "Certification Status",
-      "value": "QPL Certified",
-      "description": "This product is officially listed on the Qualified Products List (QPL) for aviation and defense applications."
-    },
-  {%- endif -%}
-
-  {%- comment -%} Compliance & OEM Certifications {%- endcomment -%}
-  {%- if certifications != blank -%}
-    {%- for cert in certifications -%}
-      {%- assign cert_trimmed = cert | strip -%}
-      {%- if cert_trimmed != blank -%}
-        {"@type":"PropertyValue","name":"OEM Certification","value":{{ cert_trimmed | json }}},
+      "name": "Conforming Specification",
+      "value": {{ spec.title.value | json }}
+      {%- if spec.base_specification.value != blank -%}
+      ,"propertyID": {{ spec.base_specification.value | json }}
       {%- endif -%}
-    {%- endfor -%}
-  {%- endif -%}
+      {%- if spec_collection != blank -%}
+      ,"url": {{ spec_collection.url | prepend: request.origin | json }}
+      {%- endif -%}
+    },
+  {%- endfor -%}
+
+  {%- for spec in approved_specs -%}
+    {%- liquid
+      assign approval_label = 'OEM Specification'
+      if spec.governing_body.value == 'US Military'
+        assign approval_label = 'QPL Specification'
+      endif
+      assign spec_collection = spec.collection.value
+    -%}
+    {
+      "@type": "PropertyValue",
+      "name": {{ approval_label | json }},
+      "value": {{ spec.title.value | json }}
+      {%- if spec.base_specification.value != blank -%}
+      ,"propertyID": {{ spec.base_specification.value | json }}
+      {%- endif -%}
+      {%- if spec_collection != blank -%}
+      ,"url": {{ spec_collection.url | prepend: request.origin | json }}
+      {%- endif -%}
+    },
+  {%- endfor -%}
 
   {
     "@type":"PropertyValue",
