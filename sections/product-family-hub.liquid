@@ -21,7 +21,9 @@
 {%- liquid
   assign family = collection.metafields.custom.product_family.value
   assign family_name = family.name.value | default: collection.title
-  assign family_group_id = collection.handle
+  # collection.id, not the handle: handles run past Google's 50-character limit
+  # for productGroupID (and inProductGroupWithID on every child).
+  assign family_group_id = collection.id
   assign family_url = collection.url | prepend: request.origin
   # Family-level specs. Prefer the collection's own metafields; fall back to a
   # representative child, since every colour in a line shares the same
@@ -34,13 +36,39 @@
   assign currency_code = cart.currency.iso_code | default: shop.currency | default: 'USD'
   assign price_valid_until = 'now' | date: '%s' | plus: 2592000 | date: '%Y-%m-%d'
 
-  # variesBy must describe every axis actually present across the family.
+  # variesBy must only claim axes that actually vary. Colour is not assumed:
+  # a single-colour family varies by size alone, and asserting otherwise
+  # misdescribes the group.
   assign family_varies_by_size = false
+  assign seen_colors = ''
+  assign distinct_color_count = 0
   for child in collection.products
     if child.variants.size > 1
       assign family_varies_by_size = true
     endif
+
+    assign detect_color = ''
+    assign detect_value = child.metafields.shopify["color-pattern"].value
+    for color_entry in detect_value limit: 1
+      assign detect_color = color_entry.label.value | default: color_entry.name.value | default: color_entry.label | default: color_entry.name
+    endfor
+    if detect_color == blank
+      assign detect_color = child.metafields.custom.sae_color.value
+    endif
+    if detect_color != blank
+      # Delimiters on both sides so one colour cannot substring-match another.
+      assign color_probe = '|' | append: detect_color | append: '|'
+      unless seen_colors contains color_probe
+        assign seen_colors = seen_colors | append: color_probe
+        assign distinct_color_count = distinct_color_count | plus: 1
+      endunless
+    endif
   endfor
+
+  assign family_varies_by_color = false
+  if distinct_color_count > 1
+    assign family_varies_by_color = true
+  endif
 -%}
 
 {%- if collection.products_count > 0 -%}
@@ -136,6 +164,24 @@
 
           assign child_base_mpn = child.metafields.custom.base_model_number.value
           assign child_image = child.featured_image
+          assign child_description = child.description | strip_html | strip_newlines | truncatewords: 40
+          if child_description == blank
+            assign child_description = collection.description | strip_html | strip_newlines | truncatewords: 40
+          endif
+          assign child_valid_from = child.published_at | date: '%Y-%m-%d'
+
+          # Resolve the size option by NAME, matching
+          # snippets/product-structured-data.liquid. variant.title only equals
+          # the size while Size is the sole option on a child; if a second
+          # option is ever added it becomes "Gallon / Something" and would be
+          # emitted as the size.
+          assign child_size_index = -1
+          for option in child.options_with_values
+            assign option_name = option.name | downcase
+            if option_name contains 'size' or option_name contains 'volume' or option_name contains 'container' or option_name contains 'kit'
+              assign child_size_index = forloop.index0
+            endif
+          endfor
         -%}
         {%- comment -%}
           hasVariant lists leaf variants, not child products: Google expects
@@ -146,9 +192,20 @@
         {%- for variant in child.variants -%}
           {%- liquid
             assign leaf_mpn = variant.metafields["mm-google-shopping"].mpn.value | default: child_base_mpn
+
+            # Spaces in SKUs are invalid in Google's sku field; normalised for
+            # structured data only, not for anything rendered on the page.
+            assign leaf_sku = variant.sku | strip | replace: '  ', ' ' | replace: '  ', ' ' | replace: ' ', '-'
             assign leaf_url = variant.url | prepend: request.origin
-            assign leaf_size = variant.title
-            if variant.title == 'Default Title'
+            assign leaf_size = variant.metafields.custom.size.value
+            if leaf_size == blank and child_size_index >= 0
+              assign leaf_size = variant.options[child_size_index]
+            endif
+            if leaf_size == blank and variant.title != 'Default Title'
+              assign leaf_size = variant.title
+            endif
+            # Never publish the placeholder as a size, however it was resolved.
+            if leaf_size == 'Default Title'
               assign leaf_size = ''
             endif
             if variant.available
@@ -168,6 +225,12 @@
             "@type": "Product",
             "name": {{ leaf_name | strip | json }},
             "url": {{ leaf_url | json }},
+            {%- if child_description != blank -%}
+            "description": {{ child_description | json }},
+            {%- endif -%}
+            {%- if child.vendor != blank -%}
+            "brand": {"@type": "Brand", "name": {{ child.vendor | json }}},
+            {%- endif -%}
             "inProductGroupWithID": {{ family_group_id | json }}
             {%- if child_color != blank -%}
             ,"color": {{ child_color | json }}
@@ -179,7 +242,7 @@
             ,"mpn": {{ leaf_mpn | json }}
             {%- endif -%}
             {%- if variant.sku != blank -%}
-            ,"sku": {{ variant.sku | json }}
+            ,"sku": {{ leaf_sku | json }}
             {%- endif -%}
             {%- if child_image -%}
             ,"image": {{ child_image | image_url: width: 1200 | prepend: 'https:' | json }}
@@ -192,6 +255,9 @@
               "availability": {{ leaf_availability | json }},
               "itemCondition": "https://schema.org/NewCondition",
               "priceValidUntil": {{ price_valid_until | json }}
+              {%- if child_valid_from != blank -%}
+              ,"validFrom": {{ child_valid_from | json }}
+              {%- endif -%}
             }
           }
           {%- assign leaf_separator = ',' -%}
@@ -207,16 +273,25 @@
     "productGroupID": {{ family_group_id | json }},
     "name": {{ family_name | json }},
     "url": {{ family_url | json }},
+    {%- if collection.products.first.vendor != blank -%}
+    "brand": {
+      "@type": "Brand",
+      "name": {{ collection.products.first.vendor | json }}
+    },
+    {%- endif -%}
     {%- if collection.description != blank -%}
     "description": {{ collection.description | strip_html | strip_newlines | truncate: 5000 | json }},
     {%- endif -%}
     {%- if collection.image -%}
     "image": {{ collection.image | image_url: width: 1200 | prepend: 'https:' | json }},
     {%- endif -%}
+    {%- if family_varies_by_color or family_varies_by_size -%}
     "variesBy": [
-      "https://schema.org/color"
-      {%- if family_varies_by_size -%},"https://schema.org/size"{%- endif -%}
+      {%- if family_varies_by_color -%}"https://schema.org/color"{%- endif -%}
+      {%- if family_varies_by_color and family_varies_by_size -%},{%- endif -%}
+      {%- if family_varies_by_size -%}"https://schema.org/size"{%- endif -%}
     ],
+    {%- endif -%}
     "hasVariant": [
       {{- family_variants -}}
     ]

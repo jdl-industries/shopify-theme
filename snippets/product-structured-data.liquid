@@ -60,7 +60,9 @@
   assign family = product.metafields.custom.product_family.value
   assign family_collection = family.collection.value
   assign family_name = family.name.value | default: family_collection.title
-  assign family_group_id = family_collection.handle
+  # collection.id, not the handle: handles exceed Google's 50-character limit
+  # for productGroupID. Must stay identical to sections/product-family-hub.
+  assign family_group_id = family_collection.id
   assign family_url = family_collection.url | prepend: request.origin
   assign product_mpn = product.metafields.custom.manufacturer_part_number.value
   assign product_nsn = product.metafields.custom.nsn.value
@@ -203,6 +205,11 @@
           # which is false data, not merely missing data. An absent mpn is the
           # correct output when the variant metafield is unpopulated.
           assign v_mpn = variant.metafields["mm-google-shopping"].mpn.value
+
+          # Several JDL SKUs contain spaces ("HZK31104KPX-T1 QT/KT"), which
+          # Google rejects as invalid characters in the sku field. Normalised
+          # for structured data only; on-page display keeps the real SKU.
+          assign v_sku = variant.sku | strip | replace: '  ', ' ' | replace: '  ', ' ' | replace: ' ', '-'
           assign v_nsn = variant.metafields.custom.nsn.value | default: product_nsn
 
           assign v_color = variant.metafields.custom.sae_color.value
@@ -305,7 +312,7 @@
           "description": {{ v_description | strip | json }},
           "inProductGroupWithID": {{ product.id | json }},
           {%- if variant.sku != blank -%}
-          "sku": {{ variant.sku | json }},
+          "sku": {{ v_sku | json }},
           {%- endif -%}
           {%- if v_mpn != blank -%}
           "mpn": {{ v_mpn | json }},
@@ -357,6 +364,7 @@
     {%- endcomment -%}
     {%- liquid
       assign v_mpn = current_variant.metafields["mm-google-shopping"].mpn.value | default: product_mpn
+      assign v_sku = current_variant.sku | strip | replace: '  ', ' ' | replace: '  ', ' ' | replace: ' ', '-'
       assign v_nsn = current_variant.metafields.custom.nsn.value | default: product_nsn
 
       assign v_color = current_variant.metafields.custom.sae_color.value
@@ -393,7 +401,7 @@
       endif
     -%}
     {%- if current_variant.sku != blank -%}
-    "sku": {{ current_variant.sku | json }},
+    "sku": {{ v_sku | json }},
     {%- endif -%}
     {%- if current_variant.barcode != blank -%}
     "gtin": {{ current_variant.barcode | json }},
@@ -457,7 +465,7 @@
       ,"validFrom": {{ offer_valid_from | json }}
       {%- endif -%}
       {%- if current_variant.sku != blank -%}
-      ,"sku": {{ current_variant.sku | json }}
+      ,"sku": {{ v_sku | json }}
       {%- endif -%}
       {%- if shop.name != blank -%}
       ,"seller": {
