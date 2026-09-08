@@ -1,0 +1,379 @@
+{%- doc -%}
+  Product Size Table
+
+  Renders one row per size variant of the current product, exposing each size's
+  manufacturer part number, NSN, price and availability as crawlable text.
+
+  This exists because the size-suffixed part numbers (e.g. "31104KPX-T1 QT/KT")
+  appear nowhere else on the site as body text: the variant picker renders size
+  labels ("Quart"), not part numbers, and the family collection page lists
+  colours rather than sizes. Those identifiers belong on the page that should
+  rank for them, which is this product's own page.
+
+  Rows are plain text, not links. Variant URLs canonicalise back to this
+  product, so linking them adds no crawl value while conflicting with the
+  variant picker's behaviour.
+
+  Renders nothing for single-variant products, where the part number is already
+  in the title, H1 and specifications block.
+
+  Field resolution matches snippets/product-structured-data.liquid:
+  - variant mm-google-shopping.mpn, falling back to variant.sku
+  - variant custom.nsn, falling back to product custom.nsn
+  - size from the option matched by NAME, never by position
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign current_variant_id = product.selected_or_first_available_variant.id
+  assign product_nsn = product.metafields.custom.nsn.value
+  assign lead_time = product.metafields.custom.lead_time.value
+
+  # Resolve the size option by NAME. Option order is not guaranteed, so never
+  # index positionally.
+  assign size_option_index = -1
+  for option in product.options_with_values
+    assign option_name = option.name | downcase
+    if option_name contains 'size' or option_name contains 'volume' or option_name contains 'container' or option_name contains 'kit'
+      assign size_option_index = forloop.index0
+    endif
+  endfor
+
+  # Only render a column when some variant populates it, otherwise a product
+  # with no NSNs gets a column of dashes.
+  assign has_mpn = false
+  assign has_nsn = false
+  assign has_unavailable = false
+  if product_nsn != blank
+    assign has_nsn = true
+  endif
+  for variant in product.variants
+    if variant.metafields["mm-google-shopping"].mpn.value != blank or variant.sku != blank
+      assign has_mpn = true
+    endif
+    if variant.metafields.custom.nsn.value != blank
+      assign has_nsn = true
+    endif
+    unless variant.available
+      assign has_unavailable = true
+    endunless
+  endfor
+-%}
+
+{%- if product != blank and product.variants.size > 1 -%}
+  <div
+    class="size-table size-table--{{ block.id }} spacing-style"
+    style="{% render 'spacing-style', settings: block.settings %}"
+    {{ block.shopify_attributes }}
+  >
+    {%- if block.settings.heading != blank -%}
+      <h2 class="size-table__heading">{{ block.settings.heading }}</h2>
+    {%- endif -%}
+
+    {%- comment -%}
+      tabindex + role make the horizontally scrollable region keyboard
+      reachable, which a bare overflow container is not.
+    {%- endcomment -%}
+    <div
+      class="size-table__scroll"
+      tabindex="0"
+      role="region"
+      aria-label="{{ block.settings.heading | default: 'Sizes and part numbers' | escape }}"
+    >
+      <table class="size-table__table">
+        <caption class="size-table__caption">
+          {{ product.variants.size }} sizes available.
+          {%- if has_unavailable %} Items without a status note are in stock.{% endif -%}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{{ block.settings.size_label | default: 'Size' }}</th>
+            {%- if has_mpn -%}
+              <th scope="col">{{ block.settings.mpn_label | default: 'Manufacturer Part #' }}</th>
+            {%- endif -%}
+            {%- if has_nsn -%}
+              <th scope="col"><abbr title="National Stock Number">NSN</abbr></th>
+            {%- endif -%}
+            <th scope="col">Price</th>
+            {%- if has_unavailable -%}
+              <th scope="col">Availability</th>
+            {%- endif -%}
+          </tr>
+        </thead>
+        <tbody>
+          {%- for variant in product.variants -%}
+            {%- liquid
+              assign row_mpn = variant.metafields["mm-google-shopping"].mpn.value
+              if row_mpn == blank
+                assign row_mpn = variant.sku
+              endif
+
+              assign row_nsn = variant.metafields.custom.nsn.value | default: product_nsn
+
+              assign row_size = variant.metafields.custom.size.value
+              if row_size == blank and size_option_index >= 0
+                assign row_size = variant.options[size_option_index]
+              endif
+              if row_size == blank and variant.title != 'Default Title'
+                assign row_size = variant.title
+              endif
+              if row_size == 'Default Title'
+                assign row_size = ''
+              endif
+
+              assign is_active = false
+              if variant.id == current_variant_id
+                assign is_active = true
+              endif
+            -%}
+            <tr
+              class="size-table__row{% if is_active %} size-table__row--active{% endif %}"
+              {% if is_active %}
+                aria-current="true"
+              {% endif %}
+            >
+              <th scope="row" class="size-table__cell size-table__cell--size">
+                {%- if row_size != blank -%}
+                  {{ row_size | escape }}
+                {%- else -%}
+                  {%- comment -%}
+                    Falling back to variant.title here would reintroduce the
+                    "Default Title" placeholder the resolution above strips out.
+                  {%- endcomment -%}
+                  <span class="size-table__empty">&mdash;</span>
+                {%- endif -%}
+              </th>
+
+              {%- if has_mpn -%}
+                <td class="size-table__cell size-table__cell--mono">
+                  {%- if row_mpn != blank -%}
+                    <strong>{{ row_mpn | escape }}</strong>
+                  {%- else -%}
+                    <span class="size-table__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              {%- if has_nsn -%}
+                <td class="size-table__cell size-table__cell--mono">
+                  {%- if row_nsn != blank -%}
+                    {{ row_nsn | escape }}
+                  {%- else -%}
+                    <span class="size-table__empty">&mdash;</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+
+              <td class="size-table__cell size-table__cell--price">
+                {%- render 'format-price', price: variant.price -%}
+              </td>
+
+              {%- comment -%}
+                Status wording mirrors the availability mapping in
+                snippets/product-structured-data.liquid: inventory_policy
+                'continue' means we keep selling past zero and fulfil on a
+                lead time, which is BackOrder rather than OutOfStock.
+              {%- endcomment -%}
+              {%- if has_unavailable -%}
+                <td class="size-table__cell">
+                  {%- if variant.available -%}
+                    <span class="size-table__empty">&mdash;</span>
+                  {%- elsif variant.inventory_policy == 'continue' -%}
+                    <span class="size-table__status size-table__status--lead">
+                      {%- if lead_time != blank -%}
+                        Lead time: {{ lead_time | escape }}
+                      {%- else -%}
+                        Lead time
+                      {%- endif -%}
+                    </span>
+                  {%- else -%}
+                    <span class="size-table__status size-table__status--out">Out of stock</span>
+                  {%- endif -%}
+                </td>
+              {%- endif -%}
+            </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .size-table {
+    width: 100%;
+    margin-block-start: var(--margin-lg);
+  }
+
+  .size-table__heading {
+    font-family: var(--font-heading--family);
+    font-size: var(--font-size--lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-foreground-heading);
+    margin: 0 0 var(--margin-sm) 0;
+    padding-block-end: var(--padding-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* Scroll the table, never the page. */
+  .size-table__scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--style-border-radius-buttons-primary, 4px);
+  }
+
+  .size-table__scroll:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .size-table__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size--sm);
+    font-family: var(--font-body--family);
+  }
+
+  .size-table__caption {
+    text-align: left;
+    padding: var(--padding-sm) var(--padding-md);
+    font-size: var(--font-size--xs);
+    color: var(--color-foreground-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .size-table__table thead th {
+    text-align: left;
+    white-space: nowrap;
+    padding: var(--padding-sm) var(--padding-md);
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-foreground-secondary);
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .size-table__table thead th abbr {
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+  }
+
+  .size-table__cell {
+    padding: var(--padding-sm) var(--padding-md);
+    border-bottom: 1px solid rgb(var(--color-foreground-rgb) / 0.08);
+    vertical-align: middle;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .size-table__row:last-child .size-table__cell {
+    border-bottom: none;
+  }
+
+  .size-table__row--active {
+    background: rgb(var(--color-foreground-rgb) / 0.06);
+  }
+
+  .size-table__cell--size {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-foreground);
+  }
+
+  .size-table__cell--mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .size-table__empty {
+    color: var(--color-foreground-secondary);
+    opacity: 0.6;
+  }
+
+  .size-table__status {
+    white-space: nowrap;
+    font-size: var(--font-size--xs);
+  }
+
+  .size-table__status--lead {
+    color: rgb(180 83 9);
+  }
+
+  .size-table__status--out {
+    color: var(--color-foreground-secondary);
+  }
+
+  @media screen and (max-width: 749px) {
+    .size-table__cell,
+    .size-table__table thead th {
+      padding: var(--padding-xs) var(--padding-sm);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Size Table",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "One row per size, showing each size's part number, NSN, price and availability. Hidden on single-size products."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Sizes & Part Numbers"
+    },
+    {
+      "type": "text",
+      "id": "size_label",
+      "label": "Size column heading",
+      "default": "Size"
+    },
+    {
+      "type": "text",
+      "id": "mpn_label",
+      "label": "Part number column heading",
+      "default": "Manufacturer Part #"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Size Table",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

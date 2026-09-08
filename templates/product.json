@@ -254,6 +254,17 @@
               },
               "blocks": {}
             },
+            "product_family_selector_DXBxPR": {
+              "type": "product-family-selector",
+              "name": "Family Selector",
+              "settings": {
+                "label": "Color",
+                "label_attribute": "shopify.color-pattern",
+                "padding-block-start": 0,
+                "padding-block-end": 0
+              },
+              "blocks": {}
+            },
             "variant_picker_R3rGDr": {
               "type": "variant-picker",
               "settings": {
@@ -359,6 +370,7 @@
           "block_order": [
             "group_icgrde",
             "text_aEtTtq",
+            "product_family_selector_DXBxPR",
             "variant_picker_R3rGDr",
             "price_surcharge_details_r93yBg",
             "price_aWYheQ",
