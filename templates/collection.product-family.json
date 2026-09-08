@@ -236,7 +236,6 @@
           ]
         }
       },
-      "disabled": true,
       "settings": {
         "layout_type": "grid",
         "product_card_size": "medium",
@@ -256,6 +255,7 @@
     },
     "quick_order_list_technical_d48qQM": {
       "type": "quick-order-list-technical",
+      "disabled": true,
       "name": "Family Order List",
       "settings": {
         "variant_column_label": "Color / Part Number",
