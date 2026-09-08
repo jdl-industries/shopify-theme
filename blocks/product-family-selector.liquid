@@ -60,56 +60,93 @@
           wrapper collection.products caps out around 50, which would silently
           truncate a large family.
         {%- endcomment -%}
-        {%- paginate family_collection.products by 250 -%}
-          {%- assign resolved_count = 0 -%}
-          {%- for sibling in family_collection.products -%}
-            {%- liquid
-              assign raw_attribute = sibling.metafields[attribute_namespace][attribute_key]
-              assign option_label = ''
+        {%- comment -%}
+          Liquid cannot sort on a value it has to compute, and the option label
+          comes from a metaobject lookup rather than a product field. So each
+          sibling is flattened into a delimited record with the label first,
+          then the whole set is sorted as strings.
 
-              if raw_attribute != blank
-                assign attribute_value = raw_attribute.value
+          Field separator ~~ and record separator || are chosen because neither
+          appears in a FED-STD colour label. A label containing either would
+          split incorrectly.
 
-                # A list.metaobject_reference resolves to a MetaobjectListDrop,
-                # which does not expose .first and stringifies to the literal
-                # "MetaobjectListDrop". Iterate it instead. Metaobject field
-                # access needs .value, matching blocks/product-specifications.
-                for entry in attribute_value limit: 1
-                  assign option_label = entry.label.value | default: entry.name.value | default: entry.label | default: entry.name
-                endfor
+          by: 250 exceeds any family size; without paginate collection.products
+          caps out around 50 and would silently truncate the list.
+        {%- endcomment -%}
+        {%- assign resolved_count = 0 -%}
+        {%- capture option_records -%}
+          {%- paginate family_collection.products by 250 -%}
+            {%- for sibling in family_collection.products -%}
+              {%- liquid
+                assign raw_attribute = sibling.metafields[attribute_namespace][attribute_key]
+                assign option_label = ''
 
-                # Single metaobject reference rather than a list.
-                if option_label == blank
-                  assign option_label = attribute_value.label.value | default: attribute_value.label
+                if raw_attribute != blank
+                  assign attribute_value = raw_attribute.value
+
+                  # A list.metaobject_reference resolves to a MetaobjectListDrop,
+                  # which does not expose .first and stringifies to the literal
+                  # "MetaobjectListDrop". Iterate it instead. Metaobject field
+                  # access needs .value, matching blocks/product-specifications.
+                  for entry in attribute_value limit: 1
+                    assign option_label = entry.label.value | default: entry.name.value | default: entry.label | default: entry.name
+                  endfor
+
+                  # Single metaobject reference rather than a list.
+                  if option_label == blank
+                    assign option_label = attribute_value.label.value | default: attribute_value.label
+                  endif
+
+                  # Plain text metafield. Guard against assigning an unhandled
+                  # drop, which is what produced the MetaobjectListDrop output.
+                  if option_label == blank
+                    assign candidate = attribute_value | append: ''
+                    unless candidate contains 'Drop'
+                      assign option_label = candidate
+                    endunless
+                  endif
                 endif
 
-                # Plain text metafield. Guard against assigning an unhandled
-                # drop, which is what produced the MetaobjectListDrop output.
-                if option_label == blank
-                  assign candidate = attribute_value | append: ''
-                  unless candidate contains 'Drop'
-                    assign option_label = candidate
-                  endunless
+                if option_label != blank
+                  assign resolved_count = resolved_count | plus: 1
+                else
+                  assign option_label = sibling.title
                 endif
-              endif
+              -%}
+              {{- option_label | strip -}}~~
+              {{- sibling.url -}}~~
+              {%- if sibling.id == product.id -%}1{%- else -%}0{%- endif -%}~~
+              {%- if sibling.available -%}1{%- else -%}0{%- endif -%}
+              ||
+            {%- endfor -%}
+          {%- endpaginate -%}
+        {%- endcapture -%}
 
-              if option_label != blank
-                assign resolved_count = resolved_count | plus: 1
-              else
-                assign option_label = sibling.title
-              endif
-            -%}
+        {%- assign option_list = option_records | split: '||' -%}
+        {%- if block.settings.sort_options != 'collection' -%}
+          {%- comment -%}
+            sort_natural is case-insensitive. Labels lead each record, so the
+            sort is by label. FED-STD codes are uniformly five digits, which
+            makes lexicographic order match numeric order for them.
+          {%- endcomment -%}
+          {%- assign option_list = option_list | sort_natural -%}
+        {%- endif -%}
+
+        {%- for record in option_list -%}
+          {%- assign fields = record | split: '~~' -%}
+          {%- assign record_label = fields[0] | strip -%}
+          {%- if record_label != blank -%}
             <option
-              value="{{ sibling.url }}"
-              {% if sibling.id == product.id %}
+              value="{{ fields[1] | strip }}"
+              {% if fields[2] == '1' %}
                 selected="selected"
               {% endif %}
             >
-              {{- option_label | escape -}}
-              {%- unless sibling.available %} - {{ 'content.unavailable' | t }}{% endunless -%}
+              {{- record_label | escape -}}
+              {%- unless fields[3] == '1' %} - {{ 'content.unavailable' | t }}{% endunless -%}
             </option>
-          {%- endfor -%}
-        {%- endpaginate -%}
+          {%- endif -%}
+        {%- endfor -%}
       </select>
       <svg
         aria-hidden="true"
@@ -177,6 +214,16 @@
       "label": "Option label attribute",
       "info": "Metafield path used for each option, as namespace.key. Defaults to shopify.color-pattern. Falls back to the product title when empty or not found.",
       "default": "shopify.color-pattern"
+    },
+    {
+      "type": "select",
+      "id": "sort_options",
+      "label": "Option order",
+      "options": [
+        { "value": "label", "label": "Label (A-Z)" },
+        { "value": "collection", "label": "Collection order" }
+      ],
+      "default": "label"
     },
     {
       "type": "header",
