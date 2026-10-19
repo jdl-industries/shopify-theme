@@ -260,6 +260,7 @@
               "settings": {
                 "label": "Color",
                 "label_attribute": "shopify.color-pattern",
+                "sort_options": "label",
                 "padding-block-start": 0,
                 "padding-block-end": 0
               },
