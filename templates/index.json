@@ -1237,6 +1237,7 @@
       "block_order": [
         "group_nPgwBD"
       ],
+      "disabled": true,
       "custom_css": [
         ".image-block {width: 150px;}",
         ".mobile-column {flex-flow: row;}"
@@ -1269,6 +1270,17 @@
         "padding-block-start": 40,
         "padding-block-end": 40
       }
+    },
+    "custom_liquid_BL3RPr": {
+      "type": "custom-liquid",
+      "name": "t:names.custom_liquid",
+      "settings": {
+        "custom_liquid": "<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@graph\": [\n    {\n      \"@type\": \"WebSite\",\n      \"@id\": \"https://jdlindustries.com/#website\",\n      \"url\": \"https://jdlindustries.com/\",\n      \"name\": \"JDL Industries, Inc\",\n      \"description\": \"Distributor of aviation, aerospace, and military specification primers, topcoats, CARC coatings, sealants, and custom tinting solutions.\",\n      \"publisher\": {\n        \"@id\": \"https://jdlindustries.com/#organization\"\n      },\n      \"potentialAction\": {\n        \"@type\": \"SearchAction\",\n        \"target\": {\n          \"@type\": \"EntryPoint\",\n          \"urlTemplate\": \"https://jdlindustries.com/search?q={search_term_string}\"\n        },\n        \"query-input\": \"required name=search_term_string\"\n      },\n      \"inLanguage\": \"en-US\"\n    },\n    {\n      \"@type\": [\"OnlineStore\", \"Corporation\"],\n      \"@id\": \"https://jdlindustries.com/#organization\",\n      \"name\": \"JDL Industries, Inc\",\n      \"alternateName\": \"JDL Industries\",\n      \"url\": \"https://jdlindustries.com/\",\n      \"logo\": \"https://jdlindustries.com/cdn/shop/files/jdl-logo.svg\",\n      \"foundingDate\": \"1987\",\n      \"founder\": {\n        \"@type\": \"Person\",\n        \"name\": \"Jose Lopez\"\n      },\n      \"address\": {\n        \"@type\": \"PostalAddress\",\n        \"streetAddress\": \"9500 NW 12th St, Suite 6\",\n        \"addressLocality\": \"Doral\",\n        \"addressRegion\": \"FL\",\n        \"postalCode\": \"33172\",\n        \"addressCountry\": \"US\"\n      },\n      \"contactPoint\": {\n        \"@type\": \"ContactPoint\",\n        \"telephone\": \"+1-305-599-2022\",\n        \"contactType\": \"Customer Support\",\n        \"areaServed\": [\"US\", \"Global\"],\n        \"availableLanguage\": [\"English\", \"Spanish\"]\n      },\n      \"knowsAbout\": [\n        \"Aerospace Coatings\",\n        \"Aviation Primers\",\n        \"Chemical Agent Resistant Topcoats (CARC)\",\n        \"MIL-DTL-53039\",\n        \"Custom Aerospace Paint Tinting\",\n        \"Federal Standard 595\",\n        \"Boeing BAC Standards\"\n      ],\n\"naics\": [\n        \"325510\",\n        \"423840\",\n        \"424850\",\n        \"424610\",\n        \"424690\"\n      ],\n      \"identifier\": [\n        {\n          \"@type\": \"PropertyValue\",\n          \"propertyID\": \"CAGE\",\n          \"name\": \"Commercial and Government Entity (CAGE) Code\",\n          \"value\": \"0NYA5\"\n        },\n        {\n          \"@type\": \"PropertyValue\",\n          \"propertyID\": \"SAM_UEI\",\n          \"name\": \"Unique Entity Identifier\",\n          \"value\": \"ZASLNEADASJ3\"\n        }\n      ],\n      \"brand\": [\n        {\n          \"@type\": \"Brand\",\n          \"name\": \"Hentzen Coatings\"\n        },\n        {\n          \"@type\": \"Brand\",\n          \"name\": \"Henkel\"\n        },        {\n          \"@type\": \"Brand\",\n          \"name\": \"Flamemaster Coatings\"\n        },        {\n          \"@type\": \"Brand\",\n          \"name\": \"3M\"\n        }\n      ]\n    }\n  ]\n}\n</script>",
+        "color_scheme": "",
+        "section_width": "page-width",
+        "padding-block-start": 0,
+        "padding-block-end": 0
+      }
     }
   },
   "order": [
@@ -1277,6 +1289,7 @@
     "product_list_fa6P9H",
     "product_list_VJYn3J",
     "collection_list_EcbqkN",
-    "section_nLGyFX"
+    "section_nLGyFX",
+    "custom_liquid_BL3RPr"
   ]
 }

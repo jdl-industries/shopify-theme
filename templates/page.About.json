@@ -118,7 +118,7 @@
             "text_wVFhhH": {
               "type": "text",
               "settings": {
-                "text": "<p>For more than three decades, JDL Industries has helped aviation and aerospace professionals source the primers and paints they need to keep maintenance operations running and comply with strict OEM and military standards.</p><p>Founded in 1987 by an Eastern Airlines Senior Engineer, Jose Lopez, JDL Industries was built on deep industry experience and a practical understanding of the aviation maintenance environment. From day one, our mission has been to provide high-quality coatings, technical training, and exceptional customer service to airlines, aviation repair facilities, and OEMs—both domestically and internationally.</p><p>Today, that mission remains unchanged.</p>",
+                "text": "<p>For more than three decades, JDL Industries has helped aviation and aerospace professionals source the primers and paints they need to keep maintenance operations running and comply with strict OEM and military standards.</p><p>Founded in 1987 by an Eastern Airlines Senior Engineer, Jose Lopez, JDL Industries was built on deep industry experience and a practical understanding of the aviation maintenance environment. From day one, our mission has been to provide high-quality coatings, technical training, and exceptional customer service to airlines, aviation repair facilities, and OEMs - both domestically and internationally.</p><p>Today, that mission remains unchanged.</p>",
                 "width": "fit-content",
                 "max_width": "none",
                 "alignment": "left",
@@ -305,6 +305,97 @@
           "type": "text",
           "name": "t:names.heading",
           "settings": {
+            "text": "<h2>Government, Defense & Military MRO Procurement</h2>",
+            "width": "fit-content",
+            "max_width": "normal",
+            "alignment": "left",
+            "type_preset": "h3",
+            "font": "var(--font-body--family)",
+            "font_size": "1rem",
+            "line_height": "normal",
+            "letter_spacing": "normal",
+            "case": "none",
+            "wrap": "pretty",
+            "color": "var(--color-foreground)",
+            "background": false,
+            "background_color": "#00000026",
+            "corner_radius": 0,
+            "scroll_animation": "fade-in",
+            "padding-block-start": 0,
+            "padding-block-end": 0,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {}
+        },
+        "text_8kwAKg": {
+          "type": "text",
+          "name": "t:names.text",
+          "settings": {
+            "text": "<p>For nearly 40 years, JDL Industries has been a trusted procurement partner for the U.S. Military, defense prime contractors, and government-managed MRO facilities. We understand the rigorous tracking, compliance, and chemical standards required for defense aviation logistics. As an <strong>exclusive distributor of Hentzen Commercial & Military topcoats and paints</strong>, we supply the exact Chemical Agent Resistant Coatings (CARC) and military primers required to protect critical defense assets. Our state-of-the-art quality control systems ensure total batch traceability, complete documentation (including manufacturer certifications), and strict shelf-life management. We streamline the defense acquisition process by offering rapid quoting, specialized custom color-matching to <strong>Federal Standard 595</strong> numbers, and seamless federal order processing through our active registrations:</p><p><strong>CAGE Code:</strong> 0NYA5</p><p><strong>Unique Entity ID (UEI):</strong> ZASLNEADASJ3</p><p><strong>NAICS Codes:</strong></p><ul><li>325510 (Paint and Coating Manufacturing)&nbsp;</li><li>423840 (Industrial Supplies Merchant Wholesalers)</li><li>423850 (Service Establishment Equipment and Supplies Merchant Wholesalers)</li><li>424610 (Plastics Materials and Basic Forms and Shapes Merchant Wholesalers)</li><li>424690 (Other Chemical and Allied Products Merchant Wholesalers)</li></ul>",
+            "width": "fit-content",
+            "max_width": "none",
+            "alignment": "left",
+            "type_preset": "rte",
+            "font": "var(--font-body--family)",
+            "font_size": "1rem",
+            "line_height": "normal",
+            "letter_spacing": "normal",
+            "case": "none",
+            "wrap": "pretty",
+            "color": "var(--color-foreground)",
+            "background": false,
+            "background_color": "#00000026",
+            "corner_radius": 0,
+            "scroll_animation": "none",
+            "padding-block-start": 0,
+            "padding-block-end": 80,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "text_8CNi88",
+        "text_8kwAKg"
+      ],
+      "name": "t:names.rich_text_section",
+      "settings": {
+        "content_direction": "column",
+        "vertical_on_mobile": true,
+        "horizontal_alignment": "flex-start",
+        "vertical_alignment": "center",
+        "align_baseline": false,
+        "horizontal_alignment_flex_direction_column": "flex-start",
+        "vertical_alignment_flex_direction_column": "center",
+        "gap": 25,
+        "section_width": "page-width",
+        "section_height": "",
+        "section_height_custom": 50,
+        "color_scheme": "scheme-3",
+        "background_media": "none",
+        "video_position": "cover",
+        "background_image_position": "cover",
+        "border": "none",
+        "border_width": 1,
+        "border_opacity": 100,
+        "border_radius": 0,
+        "toggle_overlay": true,
+        "overlay_color": "#00000026",
+        "overlay_style": "solid",
+        "gradient_direction": "to top",
+        "padding-block-start": 80,
+        "padding-block-end": 0
+      }
+    },
+    "section_YLwNMn": {
+      "type": "section",
+      "blocks": {
+        "text_pnB7wL": {
+          "type": "text",
+          "name": "t:names.heading",
+          "settings": {
             "text": "<h2>What Sets JDL Industries Apart</h2>",
             "width": "fit-content",
             "max_width": "normal",
@@ -330,7 +421,7 @@
         }
       },
       "block_order": [
-        "text_8CNi88"
+        "text_pnB7wL"
       ],
       "name": "t:names.rich_text_section",
       "settings": {
@@ -1607,6 +1698,17 @@
         "padding-block-start": 80,
         "padding-block-end": 80
       }
+    },
+    "custom_liquid_B6g9Ti": {
+      "type": "custom-liquid",
+      "name": "t:names.custom_liquid",
+      "settings": {
+        "custom_liquid": "<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"AboutPage\",\n  \"@id\": \"https://jdlindustries.com/pages/about-us#webpage\",\n  \"url\": \"https://jdlindustries.com/pages/about-us\",\n  \"name\": \"About Us – JDL Industries, Inc\",\n  \"description\": \"For more than three decades, JDL Industries has helped aviation and aerospace professionals source primers, paints, and specialty coatings complying with OEM and military standards.\",\n  \"mainEntity\": {\n    \"@type\": \"Corporation\",\n    \"@id\": \"https://jdlindustries.com/#organization\",\n    \"foundingDate\": \"1987\",\n    \"founder\": {\n      \"@type\": \"Person\",\n      \"name\": \"Jose Lopez\",\n      \"jobTitle\": \"Founder\"\n    }\n  }\n}\n</script>",
+        "color_scheme": "",
+        "section_width": "page-width",
+        "padding-block-start": 0,
+        "padding-block-end": 0
+      }
     }
   },
   "order": [
@@ -1614,11 +1716,13 @@
     "section_h3eaNb",
     "section_VWcN9i",
     "section_mMdpbN",
+    "section_YLwNMn",
     "section_kybeef",
     "section_XCyYPz",
     "section_JXHpJz",
     "section_dmJkWJ",
     "section_FPgAUc",
-    "section_J4DyVU"
+    "section_J4DyVU",
+    "custom_liquid_B6g9Ti"
   ]
 }
