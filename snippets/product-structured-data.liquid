@@ -37,7 +37,6 @@
   # the parent regardless of how many variants hang off it.
   assign meets_specs = product.metafields.custom.meets_specifications.value
   assign approved_specs = product.metafields.custom.approved_specifications.value
-  assign is_hazmat = product.metafields.custom.is_hazmat.value
 
   # Legacy product-level spec fields, used as fallbacks for catalog entries that
   # have not been consolidated into variants yet.
@@ -92,10 +91,14 @@
 -%}
 
 {%- comment -%}
-  Family-level additionalProperty entries. Every conditional entry carries a
-  trailing comma and the final Hazardous Material entry never does, which keeps
-  the array valid JSON without needing to trim a dangling separator.
+  Family-level additionalProperty entries. Hazardous Material used to live
+  here as an always-present final entry (handy for trailing-comma purposes),
+  but hazard status now resolves per variant (see v_hazmat / v_props below and
+  the single-variant branch), since custom.hazardous is a variant metafield
+  and can differ across a family. has_family_prop tracks the separator
+  explicitly instead, since no entry here is guaranteed present any more.
 {%- endcomment -%}
+{%- assign has_family_prop = false -%}
 {%- capture family_additional_properties -%}
   {%- comment -%}
     Specification metaobjects. propertyID carries the base specification, which
@@ -108,6 +111,7 @@
   {%- endcomment -%}
   {%- for spec in meets_specs -%}
     {%- assign spec_collection = spec.collection.value -%}
+    {%- if has_family_prop %},{% endif -%}
     {
       "@type": "PropertyValue",
       "name": "Conforming Specification",
@@ -118,7 +122,8 @@
       {%- if spec_collection != blank -%}
       ,"url": {{ spec_collection.url | prepend: request.origin | json }}
       {%- endif -%}
-    },
+    }
+    {%- assign has_family_prop = true -%}
   {%- endfor -%}
 
   {%- for spec in approved_specs -%}
@@ -129,6 +134,7 @@
       endif
       assign spec_collection = spec.collection.value
     -%}
+    {%- if has_family_prop %},{% endif -%}
     {
       "@type": "PropertyValue",
       "name": {{ approval_label | json }},
@@ -139,14 +145,9 @@
       {%- if spec_collection != blank -%}
       ,"url": {{ spec_collection.url | prepend: request.origin | json }}
       {%- endif -%}
-    },
+    }
+    {%- assign has_family_prop = true -%}
   {%- endfor -%}
-
-  {
-    "@type":"PropertyValue",
-    "name":"Hazardous Material",
-    "value":{% if is_hazmat %}"Yes"{% else %}"No"{% endif %}
-  }
 {%- endcapture -%}
 
 <script type="application/ld+json">
@@ -239,6 +240,8 @@
             assign v_size = variant.options[size_option_index]
           endif
 
+          assign v_hazmat = variant.metafields.custom.hazardous.value
+
           # FED-STD-595 code and color name. Prefer explicit metafields. Fall
           # back to a deliberately conservative parse of the "NNNNN (Name)"
           # display string: the code must be exactly five digits or the whole
@@ -299,9 +302,12 @@
           . {{ product.description | strip_html | strip_newlines | truncatewords: 40 -}}
         {%- endcapture -%}
         {%- comment -%}
-          Variant-level codified properties. None is guaranteed present, so the
-          separator is tracked explicitly rather than relying on a trailing
-          comma plus a always-present final entry.
+          Variant-level codified properties. Hazardous Material is always
+          emitted (Yes/No, never omitted) since custom.hazardous is a variant
+          metafield and every variant should declare its hazard status
+          explicitly; the others are conditional, so the separator is tracked
+          explicitly rather than relying on a trailing comma plus an
+          always-present final entry.
         {%- endcomment -%}
         {%- assign has_v_prop = false -%}
         {%- capture v_props -%}
@@ -319,6 +325,9 @@
             {"@type":"PropertyValue","name":"Color Name","value":{{ v_color_name | json }}}
             {%- assign has_v_prop = true -%}
           {%- endif -%}
+          {%- if has_v_prop %},{% endif -%}
+          {"@type":"PropertyValue","name":"Hazardous Material","value":{% if v_hazmat %}"Yes"{% else %}"No"{% endif %}}
+          {%- assign has_v_prop = true -%}
         {%- endcapture -%}
         {
           "@type": "Product",
@@ -406,6 +415,8 @@
         endif
       endif
 
+      assign v_hazmat = current_variant.metafields.custom.hazardous.value
+
       if current_variant.available
         assign v_availability = 'https://schema.org/InStock'
       elsif current_variant.inventory_policy == 'continue'
@@ -439,9 +450,14 @@
     {%- endif -%}
     "additionalProperty": [
       {%- comment -%}
-        These carry trailing commas because family_additional_properties always
-        ends with an unconditional Hazardous Material entry.
+        Hazardous Material is always emitted last and unconditionally (it
+        anchors the trailing-comma trick), since custom.hazardous is a
+        variant metafield and this branch resolves current_variant directly.
+        family_additional_properties may now be empty on its own, so it gets
+        an explicit comma only when it actually produced content.
       {%- endcomment -%}
+      {{- family_additional_properties -}}
+      {%- if family_additional_properties != blank -%},{%- endif -%}
       {%- if v_nsn != blank -%}
         {
           "@type":"PropertyValue",
@@ -465,7 +481,11 @@
           "value":{{ v_color_name | json }}
         },
       {%- endif -%}
-      {{- family_additional_properties -}}
+      {
+        "@type":"PropertyValue",
+        "name":"Hazardous Material",
+        "value":{% if v_hazmat %}"Yes"{% else %}"No"{% endif %}
+      }
     ],
     "offers": {
       "@type": "Offer",

@@ -20,7 +20,11 @@
   assign sae_color = resource.metafields.custom.sae_color.value
   assign meets_specs = resource.metafields.custom.meets_specifications.value
   assign approved_specs = resource.metafields.custom.approved_specifications.value
-  assign is_hazmat = resource.metafields.custom.is_hazmat.value
+  # Hazmat lives on the variant now, not the product/collection. A collection
+  # has no variant to resolve, so it falls through to its own (undefined)
+  # metafield and the row stays hidden, same as before the field existed.
+  assign hazmat_source = resource.selected_or_first_available_variant | default: resource
+  assign is_hazmat = hazmat_source.metafields.custom.hazardous.value
   assign mfr_part_number = resource.metafields.custom.manufacturer_part_number.value
   assign nsn = resource.metafields.custom.nsn.value
   assign applications = resource.metafields.custom.applications.value
