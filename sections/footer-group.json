@@ -59,7 +59,7 @@
               "name": "t:names.image",
               "settings": {
                 "image": "shopify://shop_images/NQA-AS9100-Logo-ANAB.jpg",
-                "link": "",
+                "link": "https://cdn.shopify.com/s/files/1/0750/8767/5550/files/AS9100_2026_certificate.pdf?v=1793388241",
                 "image_ratio": "adapt",
                 "width": "fill",
                 "custom_width": 100,
@@ -82,7 +82,7 @@
               "name": "t:names.image",
               "settings": {
                 "image": "shopify://shop_images/NQA-ISO-9001-Logo-ANAB.jpg",
-                "link": "",
+                "link": "https://cdn.shopify.com/s/files/1/0750/8767/5550/files/AS9100_2026_certificate.pdf?v=1793388241",
                 "image_ratio": "adapt",
                 "width": "fill",
                 "custom_width": 100,
