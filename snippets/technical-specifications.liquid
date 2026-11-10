@@ -27,7 +27,23 @@
   assign is_hazmat = hazmat_source.metafields.custom.hazardous.value
   assign mfr_part_number = resource.metafields.custom.manufacturer_part_number.value
   assign nsn = resource.metafields.custom.nsn.value
-  assign applications = resource.metafields.custom.applications.value
+
+  assign applications_values = ''
+  if product.metafields.custom.accountmate_aviation.value == true
+    assign applications_values = applications_values | append: ',Aviation'
+  endif
+  if product.metafields.custom.accountmate_industrial.value == true
+    assign applications_values = applications_values | append: ',Industrial'
+  endif
+  if product.metafields.custom.accountmate_marine.value == true
+    assign applications_values = applications_values | append: ',Marine'
+  endif
+  if applications_values != blank
+    assign applications_clean = applications_values | remove_first: ','
+    assign applications = applications_clean | split: ','
+  else
+    assign applications = '' | split: ''
+  endif
 
   assign has_specs = false
   if meets_specs != blank or approved_specs != blank or applications != blank or is_hazmat != nil
