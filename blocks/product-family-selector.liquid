@@ -110,7 +110,16 @@
                 if option_label != blank
                   assign resolved_count = resolved_count | plus: 1
                 else
-                  assign option_label = sibling.title
+                  # Hentzen PG-6-* titles bury the colour behind a long,
+                  # static product description. Liquid has no regex filter,
+                  # but " - " only ever appears once, immediately before the
+                  # FS colour code, so splitting on it reaches the same result.
+                  if sibling.title contains 'PG-6-'
+                    assign title_parts = sibling.title | split: ' - '
+                    assign option_label = title_parts | last
+                  else
+                    assign option_label = sibling.title
+                  endif
                 endif
               -%}
               {{- option_label | strip -}}~~
