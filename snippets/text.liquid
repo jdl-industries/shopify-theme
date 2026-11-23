@@ -84,6 +84,28 @@
   if is_rte
     assign element = 'rte-formatter'
   endif
+
+  # This block is the product title (bound via dynamic source to
+  # `closest.product.title`, wrapped in a bare <h1>…</h1>). Dynamic source
+  # settings can't express the "append the selected variant" logic directly
+  # (filters with arguments and chained property paths like
+  # `selected_or_first_available_variant.title` are rejected by the dynamic
+  # source validator), so splice it in here instead, and tag the element so
+  # variant:update can keep it in sync client-side.
+  assign display_text = block.settings.text
+  assign is_product_title_text = false
+  if request.page_type == 'product' and closest.product and plain_text == closest.product.title
+    assign is_product_title_text = true
+  endif
+
+  if is_product_title_text
+    assign display_text = display_text | replace: '<h1>', '<h1 data-product-title-text>'
+    assign current_variant = closest.product.selected_or_first_available_variant
+    if current_variant and closest.product.has_only_default_variant == false
+      assign variant_suffix = ' - ' | append: current_variant.title | escape | append: '</h1>'
+      assign display_text = display_text | replace: '</h1>', variant_suffix
+    endif
+  endif
 %}
 
 {% if fallback_text != blank and plain_text == blank %}
@@ -92,7 +114,7 @@
   </div>
 {% elsif plain_text != blank %}
   <{{ element }} {{ attributes | strip_newlines | strip }}>
-    {{ block.settings.text }}
+    {{ display_text }}
   </{{ element }}>
 {% endif %}
 
